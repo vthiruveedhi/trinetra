@@ -1,0 +1,33 @@
+# trinetra Phase 1 config.
+# Copy to config.yaml and tune polygon / line coordinates for your video.
+#
+# Coordinates are pixel (x, y) in the SOURCE video resolution. Tip: open the
+# first frame in any image viewer, hover with the cursor, and read coords off.
+
+model: yolo11n.pt        # ultralytics auto-downloads on first run (~5MB)
+confidence: 0.4
+classes:
+  - 0                    # COCO class id 0 = person (only class we care about)
+
+# Polygons can have any number of vertices. List them clockwise or
+# counterclockwise — supervision handles both.
+zones:
+  - name: entry
+    polygon:
+      - [100, 400]
+      - [500, 400]
+      - [500, 700]
+      - [100, 700]
+  - name: counter
+    polygon:
+      - [600, 300]
+      - [900, 300]
+      - [900, 600]
+      - [600, 600]
+
+# Line crossings give you directional counts (in vs out). Useful for the
+# front door / dining-room entrance.
+lines:
+  - name: door
+    from: [200, 100]
+    to:   [200, 700]

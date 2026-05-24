@@ -19,6 +19,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import torch
 import yaml
 from ultralytics import YOLO
 import supervision as sv
@@ -28,6 +29,14 @@ import supervision as sv
 # for this many seconds. Avoids spurious exits from 1-frame detection misses
 # and lets us correctly model "person walks through zone twice".
 ZONE_EXIT_GRACE_SECONDS = 1.0
+
+
+def pick_device() -> str:
+    if torch.backends.mps.is_available():
+        return "mps"   # Apple Silicon GPU
+    if torch.cuda.is_available():
+        return "cuda"  # NVIDIA
+    return "cpu"
 
 
 def load_config(path: Path) -> dict:
@@ -62,8 +71,10 @@ def main() -> None:
     classes = config.get("classes", [0])
 
     # ---- Models / tracker ------------------------------------------------
-    print(f"[load] model={model_name}")
+    device = pick_device()
+    print(f"[load] model={model_name}  device={device}")
     model = YOLO(model_name)
+    model.to(device)
 
     # ---- Video probe -----------------------------------------------------
     cap = cv2.VideoCapture(str(input_path))
@@ -140,7 +151,7 @@ def main() -> None:
             break
         t = frame_idx / fps
 
-        results = model(frame, classes=classes, conf=conf_threshold, verbose=False)[0]
+        results = model(frame, classes=classes, conf=conf_threshold, device=device, verbose=False)[0]
         detections = sv.Detections.from_ultralytics(results)
         detections = tracker.update_with_detections(detections)
         detections = smoother.update_with_detections(detections)

@@ -18,11 +18,15 @@ Thumbs.db
 
 # Project artifacts — output, DBs, models, sample videos
 scripts/*/output/
+scripts/*/samples/
 *.db
 *.sqlite
 *.pt
 *.onnx
 *.engine
+*.mp4
+*.mov
+*.avi
 
 # Local config (keep the example committed)
 config.yaml

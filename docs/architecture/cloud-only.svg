@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 720" width="100%" role="img">
+  <title>trinetra cloud-only architecture — no edge accelerator</title>
+  <desc>Every camera streams raw H.264 to a central AWS g4dn.xlarge GPU box that runs Frigate, YOLOv11n, ByteTrack, and OSNet re-ID. Postgres+pgvector, Qwen3-VL, and Grafana all sit on the same or adjacent boxes. Bandwidth and cost scale linearly with cameras.</desc>
+
+  <style>
+    .title { font: 700 16px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #0f172a; }
+    .subtitle { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #64748b; }
+    .region-title { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #0f172a; }
+    .box-title { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #0f172a; }
+    .box-text { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #334155; }
+    .arrow-label { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #475569; }
+    .site-container { fill: #fffbeb; stroke: #f59e0b; }
+    .site-box { fill: #fef3c7; stroke: #d97706; }
+    .cloud-container { fill: #eff6ff; stroke: #3b82f6; }
+    .cloud-box { fill: #dbeafe; stroke: #2563eb; }
+    .arr { stroke: #475569; stroke-width: 1.5; fill: none; }
+    .arr-fat { stroke: #ea580c; stroke-width: 3; fill: none; }
+    .warn { fill: #c2410c; }
+  </style>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1 L8 5 L2 9" fill="none" stroke="#475569" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-fat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1 L8 5 L2 9" fill="none" stroke="#ea580c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="340" y="30" text-anchor="middle">Cloud-only — no edge accelerator</text>
+  <text class="subtitle" x="340" y="50" text-anchor="middle">Every camera streams raw video to a central GPU box</text>
+
+  <rect class="site-container" x="40" y="70" width="600" height="180" rx="20" stroke-width="0.5"/>
+  <text class="region-title" x="60" y="94">At each restaurant</text>
+  <text class="subtitle" x="60" y="110">No local processing — just network gear</text>
+
+  <rect class="site-box" x="60" y="130" width="200" height="100" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="160" y="152" text-anchor="middle">IP cameras</text>
+  <text class="box-text" x="160" y="172" text-anchor="middle">RTSP H.264 · 1080p</text>
+  <text class="box-text" x="160" y="190" text-anchor="middle">3–5 per site</text>
+  <text class="box-text" x="160" y="208" text-anchor="middle">Each ≈ 2–5 Mbps encoded</text>
+
+  <rect class="site-box" x="280" y="130" width="200" height="100" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="380" y="152" text-anchor="middle">RTSP → cloud relay</text>
+  <text class="box-text" x="380" y="172" text-anchor="middle">Uplink required 24/7</text>
+  <text class="box-text" x="380" y="190" text-anchor="middle">TLS tunnel out</text>
+  <text class="box-text" x="380" y="208" text-anchor="middle">Or direct camera → cloud</text>
+
+  <rect class="site-box" x="500" y="130" width="120" height="100" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="560" y="152" text-anchor="middle">Site cost</text>
+  <text class="box-text" x="560" y="172" text-anchor="middle">≈ $0 hardware</text>
+  <text class="box-text" x="560" y="190" text-anchor="middle">Bandwidth $$$</text>
+  <text class="box-text" x="560" y="208" text-anchor="middle">ongoing basis</text>
+
+  <line x1="260" y1="180" x2="280" y2="180" class="arr" marker-end="url(#arrow)"/>
+
+  <line x1="340" y1="250" x2="340" y2="330" class="arr-fat" marker-end="url(#arrow-fat)"/>
+  <text class="arrow-label warn" x="350" y="278">Raw H.264 stream</text>
+  <text class="arrow-label warn" x="350" y="296">≈ 10–25 Mbps per site</text>
+  <text class="arrow-label warn" x="350" y="314">scales linearly with cameras</text>
+
+  <rect class="cloud-container" x="40" y="340" width="600" height="280" rx="20" stroke-width="0.5"/>
+  <text class="region-title" x="60" y="364">Central cloud (GPU box + services)</text>
+  <text class="subtitle" x="60" y="380">Every camera adds GPU load and bandwidth cost</text>
+
+  <rect class="cloud-box" x="60" y="400" width="220" height="200" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="170" y="422" text-anchor="middle">AWS g4dn.xlarge (T4)</text>
+  <text class="box-text" x="80" y="446">• Frigate — ingests all sites</text>
+  <text class="box-text" x="80" y="464">• YOLOv11n on GPU</text>
+  <text class="box-text" x="80" y="482">• ByteTrack (CPU)</text>
+  <text class="box-text" x="80" y="500">• OSNet re-ID on GPU</text>
+  <text class="box-text" x="80" y="518">• Event writer</text>
+  <text class="box-text" x="80" y="546">≈ $150/mo Spot,</text>
+  <text class="box-text" x="80" y="564">$380/mo on-demand</text>
+  <text class="box-text" x="80" y="582">Scales up per site added</text>
+
+  <rect class="cloud-box" x="300" y="400" width="150" height="200" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="375" y="422" text-anchor="middle">Postgres</text>
+  <text class="box-text" x="375" y="442" text-anchor="middle">+ pgvector</text>
+  <text class="box-text" x="375" y="460" text-anchor="middle">Events + embeds</text>
+
+  <rect class="cloud-box" x="470" y="400" width="80" height="200" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="510" y="422" text-anchor="middle">VLM</text>
+  <text class="box-text" x="510" y="442" text-anchor="middle">Qwen3-VL</text>
+  <text class="box-text" x="510" y="460" text-anchor="middle">On-demand</text>
+
+  <rect class="cloud-box" x="570" y="400" width="60" height="200" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="600" y="422" text-anchor="middle">Dash</text>
+  <text class="box-text" x="600" y="442" text-anchor="middle">Grafana</text>
+
+  <line x1="280" y1="500" x2="300" y2="500" class="arr" marker-end="url(#arrow)"/>
+  <line x1="450" y1="500" x2="470" y2="500" class="arr" marker-end="url(#arrow)"/>
+  <line x1="550" y1="500" x2="570" y2="500" class="arr" marker-end="url(#arrow)"/>
+
+  <text class="region-title" x="60" y="660">Key metrics</text>
+  <text class="box-text" x="60" y="680">Bandwidth: ≈ 2–5 Mbps per camera</text>
+  <text class="box-text" x="60" y="698">Real-time latency: 50–150 ms</text>
+  <text class="box-text" x="340" y="680">Failure mode: internet down = blind</text>
+  <text class="box-text" x="340" y="698">Privacy: raw video traverses internet</text>
+</svg>

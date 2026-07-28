@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 720" width="100%" role="img">
+  <title>trinetra edge architecture — Pi 5 + Hailo AI HAT+ at each restaurant</title>
+  <desc>Per-site Pi 5 with Hailo AI HAT+ runs Frigate, YOLOv11n, ByteTrack, and OSNet re-ID locally. Only ~1 KB/s of events crosses the internet to a modest central cloud running Postgres+pgvector, Qwen3-VL for Q&amp;A, and a Grafana dashboard.</desc>
+
+  <style>
+    .title { font: 700 16px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #0f172a; }
+    .subtitle { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #64748b; }
+    .region-title { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #0f172a; }
+    .box-title { font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #0f172a; }
+    .box-text { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #334155; }
+    .arrow-label { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #475569; }
+    .site-container { fill: #ecfdf5; stroke: #10b981; }
+    .site-box { fill: #d1fae5; stroke: #059669; }
+    .cloud-container { fill: #eff6ff; stroke: #3b82f6; }
+    .cloud-box { fill: #dbeafe; stroke: #2563eb; }
+    .arr { stroke: #475569; stroke-width: 1.5; fill: none; }
+  </style>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1 L8 5 L2 9" fill="none" stroke="#475569" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text class="title" x="340" y="30" text-anchor="middle">Edge architecture — Pi 5 + Hailo AI HAT+</text>
+  <text class="subtitle" x="340" y="50" text-anchor="middle">One AI node per restaurant. Only events cross the internet.</text>
+
+  <rect class="site-container" x="40" y="70" width="600" height="240" rx="20" stroke-width="0.5"/>
+  <text class="region-title" x="60" y="94">At each restaurant</text>
+  <text class="subtitle" x="60" y="110">Everything below stays on the local network</text>
+
+  <rect class="site-box" x="60" y="130" width="140" height="160" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="130" y="152" text-anchor="middle">IP cameras</text>
+  <text class="box-text" x="130" y="172" text-anchor="middle">RTSP H.264</text>
+  <text class="box-text" x="130" y="190" text-anchor="middle">3–5 per site</text>
+  <text class="box-text" x="130" y="208" text-anchor="middle">1080p @ 15–30 FPS</text>
+
+  <rect class="site-box" x="220" y="130" width="400" height="160" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="420" y="152" text-anchor="middle">Pi 5 (8 GB) + Hailo AI HAT+ (26 TOPS)</text>
+  <text class="box-text" x="240" y="176">• Frigate — RTSP ingest, zones, line crossings</text>
+  <text class="box-text" x="240" y="194">• YOLOv11n .hef — on Hailo NPU (~100 FPS)</text>
+  <text class="box-text" x="240" y="212">• ByteTrack (CPU) + OSNet re-ID .hef (on Hailo)</text>
+  <text class="box-text" x="240" y="230">• SQLite buffer — offline-safe</text>
+  <text class="box-text" x="240" y="248">• Batches events to cloud every ~5 s</text>
+  <text class="box-text" x="240" y="272">≈ $190 one-time per site (Pi 5 + HAT+ + case)</text>
+
+  <line x1="200" y1="210" x2="220" y2="210" class="arr" marker-end="url(#arrow)"/>
+
+  <line x1="420" y1="310" x2="420" y2="370" class="arr" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="430" y="330">HTTPS events only</text>
+  <text class="arrow-label" x="430" y="346">≈ 1 KB/s per camera</text>
+
+  <rect class="cloud-container" x="40" y="370" width="600" height="240" rx="20" stroke-width="0.5"/>
+  <text class="region-title" x="60" y="394">Central cloud (single instance, all sites)</text>
+  <text class="subtitle" x="60" y="410">Modest — no video ingest, no GPU inference in hot path</text>
+
+  <rect class="cloud-box" x="60" y="440" width="130" height="140" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="125" y="462" text-anchor="middle">Event API</text>
+  <text class="box-text" x="125" y="482" text-anchor="middle">HTTPS ingest</text>
+  <text class="box-text" x="125" y="500" text-anchor="middle">Auth + rate limit</text>
+
+  <rect class="cloud-box" x="205" y="440" width="130" height="140" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="270" y="462" text-anchor="middle">Postgres</text>
+  <text class="box-text" x="270" y="482" text-anchor="middle">+ pgvector</text>
+  <text class="box-text" x="270" y="500" text-anchor="middle">Events + re-ID</text>
+
+  <rect class="cloud-box" x="350" y="440" width="130" height="140" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="415" y="462" text-anchor="middle">VLM Q&amp;A</text>
+  <text class="box-text" x="415" y="482" text-anchor="middle">Qwen3-VL</text>
+  <text class="box-text" x="415" y="500" text-anchor="middle">On-demand only</text>
+
+  <rect class="cloud-box" x="495" y="440" width="130" height="140" rx="12" stroke-width="0.5"/>
+  <text class="box-title" x="560" y="462" text-anchor="middle">Dashboard</text>
+  <text class="box-text" x="560" y="482" text-anchor="middle">Grafana</text>
+  <text class="box-text" x="560" y="500" text-anchor="middle">+ alerts</text>
+
+  <line x1="190" y1="510" x2="205" y2="510" class="arr" marker-end="url(#arrow)"/>
+  <line x1="335" y1="510" x2="350" y2="510" class="arr" marker-end="url(#arrow)"/>
+  <line x1="480" y1="510" x2="495" y2="510" class="arr" marker-end="url(#arrow)"/>
+
+  <text class="region-title" x="60" y="650">Key metrics</text>
+  <text class="box-text" x="60" y="670">Bandwidth: ≈ 1 KB/s per camera</text>
+  <text class="box-text" x="60" y="688">Real-time latency: 20–50 ms</text>
+  <text class="box-text" x="340" y="670">Failure mode: site works offline, syncs later</text>
+  <text class="box-text" x="340" y="688">Privacy: raw video never leaves site</text>
+</svg>

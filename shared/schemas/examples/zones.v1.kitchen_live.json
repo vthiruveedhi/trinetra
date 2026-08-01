@@ -1,0 +1,49 @@
+{
+  "version": "zones.v1",
+  "site_id": "lab-youtube-kitchen-grill",
+  "camera_id": "cam-youtube-kitchen-pov",
+  "image_width": 640,
+  "image_height": 480,
+  "zones": [
+    {
+      "zone_id": "cook-grill",
+      "label": "Grill / cook station",
+      "kind": "table",
+      "polygon": [[120, 220], [420, 220], [460, 470], [80, 470]],
+      "capacity_hint": 2
+    },
+    {
+      "zone_id": "cook-left",
+      "label": "Left cook / burner",
+      "kind": "table",
+      "polygon": [[10, 180], [140, 180], [120, 420], [10, 450]],
+      "capacity_hint": 1
+    },
+    {
+      "zone_id": "prep-back",
+      "label": "Prep / mise en place",
+      "kind": "table",
+      "polygon": [[80, 20], [400, 20], [400, 150], [80, 150]],
+      "capacity_hint": 2
+    },
+    {
+      "zone_id": "plating-pass",
+      "label": "Plating / pass",
+      "kind": "pass",
+      "polygon": [[400, 80], [630, 80], [630, 320], [420, 320]],
+      "capacity_hint": 2
+    },
+    {
+      "zone_id": "expo-window",
+      "label": "Expo / service window",
+      "kind": "pass",
+      "polygon": [[420, 20], [630, 20], [630, 100], [420, 100]]
+    },
+    {
+      "zone_id": "line-aisle",
+      "label": "Line aisle / runner",
+      "kind": "queue",
+      "polygon": [[200, 140], [420, 140], [420, 230], [200, 230]]
+    }
+  ]
+}

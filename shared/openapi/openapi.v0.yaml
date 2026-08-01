@@ -1,0 +1,93 @@
+openapi: 3.1.0
+info:
+  title: RasaOps API (stub)
+  version: 0.0.1
+  description: |
+    Stub OpenAPI for L1 dogfood. Expand in PR-11+.
+    Device auth will be mTLS; this stub is for local compose only.
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local compose / stub
+paths:
+  /health:
+    get:
+      summary: Liveness
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /v1/devices/{device_id}/events:
+    post:
+      summary: Ingest event package (meta + optional frame multipart later)
+      operationId: ingestEvent
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventPackage"
+      responses:
+        "202":
+          description: Accepted
+        "403":
+          description: frames.upload entitlement denied for frame part
+  /v1/sites/{site_id}/chat:
+    post:
+      summary: Grounded chat (PR-17)
+      operationId: chat
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+      responses:
+        "200":
+          description: Reply with citations
+components:
+  schemas:
+    RedactionStatus:
+      type: string
+      enum:
+        - ok
+        - failed_no_frame
+        - person_no_face_heuristic
+        - skipped_meta_only
+    EventPackage:
+      type: object
+      required: [meta, schema_version]
+      properties:
+        schema_version:
+          type: string
+          example: event_package.v1
+        meta:
+          type: object
+          additionalProperties: true
+        frame:
+          type: object
+          additionalProperties: true
+          nullable: true

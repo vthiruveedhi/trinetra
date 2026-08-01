@@ -1,0 +1,84 @@
+{
+  "version": "zones.v1",
+  "site_id": "lab-youtube-coopers-pub",
+  "camera_id": "cam-youtube-coopers",
+  "image_width": 640,
+  "image_height": 480,
+  "zones": [
+    {
+      "zone_id": "bar-counter",
+      "label": "Bar counter / rail",
+      "kind": "queue",
+      "polygon": [[10, 140], [250, 140], [250, 300], [10, 320]],
+      "capacity_hint": 8
+    },
+    {
+      "zone_id": "table-front-left",
+      "label": "Front left seating",
+      "kind": "table",
+      "polygon": [[10, 300], [220, 300], [220, 470], [10, 470]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-front-center",
+      "label": "Front center seating",
+      "kind": "table",
+      "polygon": [[220, 310], [420, 310], [420, 470], [220, 470]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-front-right",
+      "label": "Front right seating",
+      "kind": "table",
+      "polygon": [[420, 300], [630, 300], [630, 470], [420, 470]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-mid-left",
+      "label": "Mid left seating",
+      "kind": "table",
+      "polygon": [[10, 180], [210, 180], [210, 310], [10, 310]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-mid-center",
+      "label": "Mid center seating / standing",
+      "kind": "table",
+      "polygon": [[210, 170], [430, 170], [430, 320], [210, 320]],
+      "capacity_hint": 6
+    },
+    {
+      "zone_id": "table-mid-right",
+      "label": "Mid right seating",
+      "kind": "table",
+      "polygon": [[430, 170], [630, 170], [630, 310], [430, 310]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-back-left",
+      "label": "Back left booths",
+      "kind": "table",
+      "polygon": [[10, 20], [220, 20], [220, 170], [10, 180]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-back-right",
+      "label": "Back right booths",
+      "kind": "table",
+      "polygon": [[400, 20], [620, 20], [620, 170], [400, 170]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "entrance-main",
+      "label": "Door / entrance",
+      "kind": "entrance",
+      "polygon": [[520, 10], [635, 10], [635, 140], [520, 140]]
+    },
+    {
+      "zone_id": "service-aisle",
+      "label": "Service aisle",
+      "kind": "queue",
+      "polygon": [[250, 100], [400, 100], [400, 180], [250, 180]]
+    }
+  ]
+}

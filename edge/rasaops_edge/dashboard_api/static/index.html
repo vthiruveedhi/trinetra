@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>RasaOps Kiosk</title>
+  <style>
+    :root {
+      --bg0: #070b12;
+      --bg1: #0c1220;
+      --panel: rgba(18, 26, 40, 0.88);
+      --panel-solid: #121a28;
+      --border: rgba(120, 150, 200, 0.12);
+      --border-strong: rgba(120, 150, 200, 0.22);
+      --text: #f0f4fa;
+      --muted: #8b9bb4;
+      --faint: #5c6b82;
+      --accent: #5eb1ff;
+      --accent-dim: rgba(94, 177, 255, 0.14);
+      --ok: #3dd68c;
+      --ok-dim: rgba(61, 214, 140, 0.14);
+      --warn: #f5b942;
+      --warn-dim: rgba(245, 185, 66, 0.14);
+      --hot: #ff6b7a;
+      --hot-dim: rgba(255, 107, 122, 0.14);
+      --purple: #b18cff;
+      --radius: 18px;
+      --radius-sm: 12px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(94, 177, 255, 0.12), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, rgba(177, 140, 255, 0.10), transparent 50%),
+        radial-gradient(800px 400px at 50% 100%, rgba(61, 214, 140, 0.06), transparent 45%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 18px 20px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    .logo {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #5eb1ff, #7c6cff 55%, #3dd68c);
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 0.95rem; letter-spacing: 0.04em;
+      color: #061018;
+      flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(94, 177, 255, 0.35);
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .brand .sub {
+      margin-top: 2px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: min(52vw, 560px);
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted);
+    }
+    .chip .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--faint);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+    }
+    .chip.online { color: var(--ok); border-color: rgba(61,214,140,0.25); background: var(--ok-dim); }
+    .chip.online .dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+    .chip.offline { color: var(--warn); border-color: rgba(245,185,66,0.25); background: var(--warn-dim); }
+    .chip.offline .dot { background: var(--warn); }
+    .lang {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+    }
+    .lang button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .lang button.active {
+      background: var(--accent);
+      color: #061018;
+    }
+    .clock {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-width: 64px;
+      text-align: right;
+    }
+
+    /* Hero KPI row */
+    .hero {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 1100px) {
+      .hero { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 560px) {
+      .hero { grid-template-columns: 1fr; }
+      .brand .sub { max-width: 48vw; }
+    }
+
+    .kpi {
+      position: relative;
+      overflow: hidden;
+      padding: 18px 18px 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      min-height: 128px;
+    }
+    .kpi::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: var(--kpi-accent, var(--accent));
+      opacity: 0.9;
+    }
+    .kpi .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .kpi .value {
+      font-size: 2.35rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi .value.sm { font-size: 1.55rem; margin-top: 4px; }
+    .kpi .hint {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.35;
+      min-height: 2.2em;
+    }
+    .kpi.load-busy { --kpi-accent: var(--warn); }
+    .kpi.load-very_busy { --kpi-accent: var(--hot); }
+    .kpi.load-moderate { --kpi-accent: var(--accent); }
+    .kpi.load-sparse { --kpi-accent: var(--ok); }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .pill.busy, .pill.very_busy { background: var(--hot-dim); color: var(--hot); }
+    .pill.moderate { background: var(--accent-dim); color: var(--accent); }
+    .pill.sparse, .pill.quiet, .pill.clear, .pill.idle { background: var(--ok-dim); color: var(--ok); }
+    .pill.high, .pill.rush, .pill.backed_up, .pill.critical, .pill.fast { background: var(--hot-dim); color: var(--hot); }
+    .pill.medium, .pill.steady, .pill.active, .pill.plating { background: var(--warn-dim); color: var(--warn); }
+    .pill.low, .pill.light, .pill.slow { background: var(--ok-dim); color: var(--ok); }
+
+    .bar {
+      margin-top: 12px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      transition: width 0.45s ease;
+    }
+    .bar.hot > i { background: linear-gradient(90deg, var(--warn), var(--hot)); }
+    .bar.ok > i { background: linear-gradient(90deg, #2bb673, var(--ok)); }
+
+    /* Sections */
+    .section {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+    }
+    .section-head h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .section-head .meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .section-body { padding: 16px 18px 18px; }
+    .hidden { display: none !important; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 1000px) {
+      .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+      .metric-grid { grid-template-columns: 1fr; }
+    }
+    .mcard {
+      padding: 14px 14px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+    .mcard .k {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 8px;
+    }
+    .mcard .v {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .mcard .d {
+      margin-top: 6px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    /* Tables floor */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .tcard {
+      position: relative;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.22);
+      min-height: 118px;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .tcard.occupied {
+      border-color: rgba(255, 107, 122, 0.35);
+      background: linear-gradient(180deg, rgba(255,107,122,0.10), rgba(0,0,0,0.22));
+    }
+    .tcard.free {
+      border-color: rgba(61, 214, 140, 0.28);
+      background: linear-gradient(180deg, rgba(61,214,140,0.08), rgba(0,0,0,0.22));
+    }
+    .tcard .name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 10px;
+      line-height: 1.25;
+      min-height: 2.2em;
+    }
+    .tcard .state {
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+    .tcard.occupied .state { color: var(--hot); }
+    .tcard.free .state { color: var(--ok); }
+    .tcard .people {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .tcard .fill {
+      margin-top: 10px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+    .tcard .fill > i {
+      display: block; height: 100%; width: 0;
+      background: linear-gradient(90deg, var(--ok), var(--warn), var(--hot));
+      transition: width 0.4s ease;
+    }
+
+    /* Density visual */
+    .density {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .density .col {
+      text-align: center;
+      padding: 10px 6px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+    }
+    .density .col strong {
+      display: block;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .density .col span {
+      font-size: 0.68rem;
+      color: var(--faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+    }
+
+    /* Bottom split */
+    .split {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 960px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    .events-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    .events-table th {
+      text-align: left;
+      color: var(--faint);
+      font-weight: 700;
+      font-size: 0.7rem;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 0 8px 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .events-table td {
+      padding: 10px 8px 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--text);
+      vertical-align: top;
+    }
+    .events-table tr:last-child td { border-bottom: 0; }
+    .ev-type {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 0.82rem;
+    }
+    .ev-time { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ev-zone { color: var(--muted); }
+    .empty {
+      color: var(--faint);
+      font-size: 0.88rem;
+      padding: 18px 0;
+      text-align: center;
+    }
+
+    .chat-box {
+      min-height: 72px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      background: rgba(0,0,0,0.28);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+      margin-bottom: 12px;
+    }
+    .chat-row {
+      display: flex;
+      gap: 8px;
+    }
+    .chat-row input {
+      flex: 1;
+      border: 1px solid var(--border-strong);
+      background: rgba(0,0,0,0.35);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 0.92rem;
+      outline: none;
+    }
+    .chat-row input:focus {
+      border-color: rgba(94, 177, 255, 0.55);
+      box-shadow: 0 0 0 3px rgba(94, 177, 255, 0.12);
+    }
+    .chat-row button {
+      border: 0;
+      border-radius: 12px;
+      padding: 0 18px;
+      font-weight: 800;
+      font-size: 0.88rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, #5eb1ff, #7c6cff);
+      color: #061018;
+      min-width: 72px;
+    }
+    .chat-row button:hover { filter: brightness(1.06); }
+
+    .hint-banner {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-dim);
+      border: 1px solid rgba(94, 177, 255, 0.2);
+      color: var(--text);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    .footer-note {
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--faint);
+      padding: 4px 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">RO</div>
+        <div>
+          <h1 id="title">RasaOps Floor</h1>
+          <div class="sub" id="site-line">Connecting…</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="chip" id="scene-chip"><span class="dot"></span><span id="scene-chip-text">—</span></div>
+        <span id="net" class="chip offline"><span class="dot"></span><span id="net-text">offline</span></span>
+        <div class="lang">
+          <button id="btn-en" class="active" type="button" onclick="setLang('en')">EN</button>
+          <button id="btn-hi" type="button" onclick="setLang('hi')">HI</button>
+        </div>
+        <div class="clock" id="clock">--:--</div>
+      </div>
+    </header>
+
+    <section class="hero" id="hero">
+      <div class="kpi" id="kpi-people">
+        <div class="label" id="lbl-people">People now</div>
+        <div class="value" id="person-count">0</div>
+        <div class="hint" id="person-avg">avg — · peak —</div>
+      </div>
+      <div class="kpi" id="kpi-seats">
+        <div class="label" id="lbl-seats">Seating</div>
+        <div class="value sm" id="seat-stat">—</div>
+        <div class="bar" id="seat-bar"><i id="seat-bar-fill"></i></div>
+        <div class="hint" id="seat-meta">tables & seats</div>
+      </div>
+      <div class="kpi" id="kpi-load">
+        <div class="label" id="lbl-load">Floor load</div>
+        <div class="value sm"><span class="pill" id="floor-load">—</span></div>
+        <div class="hint" id="staffing-hint">—</div>
+      </div>
+      <div class="kpi" id="kpi-bar">
+        <div class="label" id="lbl-bar">Bar / queue</div>
+        <div class="value" id="queue-count">0</div>
+        <div class="hint" id="queue-meta">bar crowd</div>
+      </div>
+    </section>
+
+    <!-- Pub panel -->
+    <section class="section hidden" id="pub-panel">
+      <div class="section-head">
+        <h2 id="lbl-pub">Pub floor</h2>
+        <div class="meta" id="pub-stream">—</div>
+      </div>
+      <div class="section-body">
+        <div class="metric-grid">
+          <div class="mcard">
+            <div class="k">Bar pressure</div>
+            <div class="v"><span class="pill" id="bar-pressure">—</span></div>
+            <div class="d" id="bar-crowd">—</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Social energy</div>
+            <div class="v"><span class="pill" id="social-energy">—</span></div>
+            <div class="d" id="pub-service">—</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Drinks</div>
+            <div class="v" id="pub-drinks">—</div>
+            <div class="d" id="pub-drinks-note">YOLO + seating proxy</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Atmosphere</div>
+            <div class="v" id="atmo-lab" style="font-size:1.1rem">—</div>
+            <div class="d" id="move-lab">movement —</div>
+          </div>
+        </div>
+        <div class="hint-banner" id="pub-hint">—</div>
+      </div>
+    </section>
+
+    <!-- Kitchen panel -->
+    <section class="section hidden" id="kitchen-panel">
+      <div class="section-head">
+        <h2 id="lbl-kitchen">Kitchen line</h2>
+        <div class="meta" id="kit-stream">cooking · plating</div>
+      </div>
+      <div class="section-body">
+        <div class="metric-grid">
+          <div class="mcard">
+            <div class="k">Cooking</div>
+            <div class="v"><span class="pill" id="cook-load">—</span></div>
+            <div class="d" id="cook-staff">—</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Plating</div>
+            <div class="v"><span class="pill" id="plate-pressure">—</span></div>
+            <div class="d" id="plate-staff">—</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Line pace</div>
+            <div class="v"><span class="pill" id="line-pace">—</span></div>
+            <div class="d" id="line-balance">—</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Line hint</div>
+            <div class="v" id="line-hint" style="font-size:0.95rem;font-weight:600;line-height:1.3">—</div>
+            <div class="d" id="kit-food">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vibe / dining extras -->
+    <section class="section" id="vibe-panel">
+      <div class="section-head">
+        <h2 id="lbl-vibe">Room pulse</h2>
+        <div class="meta" id="vibe-disclaimer">proxies only · no face AI</div>
+      </div>
+      <div class="section-body">
+        <div class="metric-grid">
+          <div class="mcard">
+            <div class="k">Happiness</div>
+            <div class="v" id="happy-idx">—</div>
+            <div class="d" id="happy-lab">social + motion proxy</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Density L / C / R</div>
+            <div class="density">
+              <div class="col"><strong id="den-l">0</strong><span>Left</span></div>
+              <div class="col"><strong id="den-c">0</strong><span>Center</span></div>
+              <div class="col"><strong id="den-r">0</strong><span>Right</span></div>
+            </div>
+            <div class="d" id="coverage">coverage —</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Drinks visible</div>
+            <div class="v" id="drinks-n">0</div>
+            <div class="d" id="drinks-note">cups / bottles / glasses</div>
+          </div>
+          <div class="mcard">
+            <div class="k">Eating</div>
+            <div class="v"><span class="pill" id="eat-lab">—</span></div>
+            <div class="d" id="eat-note">food objects + seated</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Floor tables -->
+    <section class="section">
+      <div class="section-head">
+        <h2 id="lbl-tables">Floor zones</h2>
+        <div class="meta" id="tables-summary">—</div>
+      </div>
+      <div class="section-body">
+        <div class="tables-grid" id="tables"></div>
+      </div>
+    </section>
+
+    <div class="split">
+      <section class="section">
+        <div class="section-head">
+          <h2 id="lbl-events">Live events</h2>
+          <div class="meta" id="sync-meta">queue depth <span id="qdepth">0</span></div>
+        </div>
+        <div class="section-body" style="padding-top:10px">
+          <table class="events-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Zone</th>
+                <th>Scrub</th>
+              </tr>
+            </thead>
+            <tbody id="events"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2 id="lbl-chat">Ask RasaOps</h2>
+          <div class="meta" id="chat-meta">local + cloud</div>
+        </div>
+        <div class="section-body">
+          <div class="chat-box" id="chat-box">Ask about free tables, bar pressure, or floor load.</div>
+          <div class="chat-row">
+            <input id="chat-input" type="text" placeholder="e.g. Which tables are free?" autocomplete="off" />
+            <button type="button" onclick="askChat()" id="btn-ask">Ask</button>
+          </div>
+          <div class="hint" style="margin-top:12px;font-size:0.78rem;color:var(--faint)" id="metric-tune">
+            metric v1
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="footer-note" id="footer-note">
+      Lab kiosk · occupancy proxies · no facial recognition
+    </div>
+  </div>
+
+  <script>
+    const T = {
+      en: {
+        title: "RasaOps Floor",
+        people: "People now",
+        seats: "Seating",
+        load: "Floor load",
+        bar: "Bar / queue",
+        tables: "Floor zones",
+        events: "Live events",
+        chat: "Ask RasaOps",
+        vibe: "Room pulse",
+        pub: "Pub floor",
+        kitchen: "Kitchen line",
+        free: "FREE",
+        occupied: "OCCUPIED",
+        online: "online",
+        offline: "offline",
+        chatPlaceholder: "e.g. Which tables are free?",
+        chatDefault: "Ask about free tables, bar pressure, or floor load.",
+      },
+      hi: {
+        title: "रसाऑप्स फ्लोर",
+        people: "अभी लोग",
+        seats: "सीटिंग",
+        load: "फ्लोर लोड",
+        bar: "बार / कतार",
+        tables: "फ्लोर ज़ोन",
+        events: "लाइव इवेंट्स",
+        chat: "पूछें",
+        vibe: "रूम पल्स",
+        pub: "पब फ्लोर",
+        kitchen: "किचन लाइन",
+        free: "खाली",
+        occupied: "व्यस्त",
+        online: "ऑनलाइन",
+        offline: "ऑफ़लाइन",
+        chatPlaceholder: "जैसे: कौन सी टेबल खाली हैं?",
+        chatDefault: "खाली टेबल, बार या लोड के बारे में पूछें।",
+      }
+    };
+
+    let lang = "en";
+    let cloudBase = localStorage.getItem("rasaops_cloud") || "http://127.0.0.1:18080";
+
+    function setPill(el, text) {
+      if (!el) return;
+      const raw = (text || "—").toString();
+      el.textContent = raw;
+      el.className = "pill " + raw.toLowerCase().replace(/\s+/g, "_");
+    }
+
+    function setLang(l) {
+      lang = l;
+      document.getElementById("btn-en").classList.toggle("active", l === "en");
+      document.getElementById("btn-hi").classList.toggle("active", l === "hi");
+      const t = T[l];
+      document.getElementById("title").textContent = t.title;
+      document.getElementById("lbl-people").textContent = t.people;
+      document.getElementById("lbl-seats").textContent = t.seats;
+      document.getElementById("lbl-load").textContent = t.load;
+      document.getElementById("lbl-bar").textContent = t.bar;
+      document.getElementById("lbl-tables").textContent = t.tables;
+      document.getElementById("lbl-events").textContent = t.events;
+      document.getElementById("lbl-chat").textContent = t.chat;
+      document.getElementById("lbl-vibe").textContent = t.vibe;
+      document.getElementById("lbl-pub").textContent = t.pub;
+      document.getElementById("lbl-kitchen").textContent = t.kitchen;
+      document.getElementById("chat-input").placeholder = t.chatPlaceholder;
+      const box = document.getElementById("chat-box");
+      if (!box.dataset.answered) box.textContent = t.chatDefault;
+      refresh();
+    }
+
+    function tickClock() {
+      const d = new Date();
+      document.getElementById("clock").textContent = d.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    }
+
+    async function refresh() {
+      try {
+        const [m, e] = await Promise.all([
+          fetch("/local/metrics").then((r) => r.json()),
+          fetch("/local/events?limit=16").then((r) => r.json()),
+        ]);
+        const t = T[lang];
+        const sc = m.scene || {};
+        const seat = m.seating || {};
+        const pub = sc.pub || null;
+        const kit = sc.kitchen || null;
+        const vibe = sc.vibe || {};
+
+        document.getElementById("site-line").textContent = [
+          m.stream_title || sc.scene_title || "Live",
+          m.site_id,
+          m.device_id,
+        ].filter(Boolean).join(" · ");
+
+        document.getElementById("scene-chip-text").textContent =
+          (sc.scene_title || sc.scene_type || "scene").toString();
+
+        const net = document.getElementById("net");
+        const netText = document.getElementById("net-text");
+        if (m.online) {
+          net.className = "chip online";
+          netText.textContent = t.online;
+        } else {
+          net.className = "chip offline";
+          netText.textContent = t.offline;
+        }
+
+        // Hero
+        const people = sc.person_count ?? m.person_count ?? 0;
+        document.getElementById("person-count").textContent = people;
+        document.getElementById("person-avg").textContent =
+          `tracked ${sc.person_count_tracked ?? "—"} · det ${sc.person_count_detected ?? "—"} · avg ${sc.person_count_avg ?? "—"} · peak ${sc.person_count_peak ?? "—"}` +
+          (sc.person_count_note ? ` · model estimate (not certified headcount)` : "");
+
+        const seated = seat.seated_people ?? sc.seated_people ?? 0;
+        const cap = seat.seat_capacity ?? sc.seat_capacity ?? 0;
+        const tOcc = seat.tables_occupied ?? sc.tables_occupied ?? 0;
+        const tFree = seat.tables_free ?? sc.tables_free ?? 0;
+        const fill = seat.seat_occupancy_rate ?? sc.seat_occupancy_rate ?? (cap ? seated / cap : 0);
+        document.getElementById("seat-stat").textContent = `${seated} / ${cap || "—"}`;
+        document.getElementById("seat-meta").textContent =
+          `tables ${tOcc} occ · ${tFree} free · seats free ≈ ${seat.seats_free_est ?? sc.seats_free_est ?? "—"}`;
+        const seatFill = document.getElementById("seat-bar-fill");
+        seatFill.style.width = `${Math.min(100, Math.round((fill || 0) * 100))}%`;
+        document.getElementById("seat-bar").className =
+          "bar " + (fill >= 0.7 ? "hot" : fill >= 0.35 ? "" : "ok");
+
+        const load = (sc.floor_load || "—").toString();
+        setPill(document.getElementById("floor-load"), load);
+        document.getElementById("kpi-load").className = "kpi load-" + load.toLowerCase().replace(/\s+/g, "_");
+        document.getElementById("staffing-hint").textContent = sc.staffing_hint || "—";
+
+        const barN = m.bar_crowd_est ?? (pub && pub.bar_crowd_est) ?? 0;
+        document.getElementById("queue-count").textContent = barN || m.entrance_queue_count || 0;
+        document.getElementById("queue-meta").textContent =
+          `bar ≈ ${barN} · queues ≈ ${m.entrance_queue_count ?? 0} · sync depth ${m.queue_depth ?? 0}`;
+        document.getElementById("qdepth").textContent = m.queue_depth ?? 0;
+
+        // Density
+        const zd = sc.zone_density || {};
+        document.getElementById("den-l").textContent = zd.left ?? 0;
+        document.getElementById("den-c").textContent = zd.center ?? 0;
+        document.getElementById("den-r").textContent = zd.right ?? 0;
+        document.getElementById("coverage").textContent =
+          `coverage ${sc.floor_coverage != null ? (sc.floor_coverage * 100).toFixed(1) + "%" : "—"} · busy dwell ${sc.busy_dwell_sec ?? 0}s`;
+
+        // Vibe
+        document.getElementById("happy-idx").textContent =
+          sc.happiness_index ?? vibe.happiness_index ?? "—";
+        document.getElementById("happy-lab").textContent =
+          `${vibe.happiness_label || "—"} · avg ${vibe.happiness_avg ?? "—"} · not face AI`;
+        document.getElementById("atmo-lab").textContent =
+          (sc.atmosphere_label || (vibe.atmosphere || {}).label || "—").toString().replace(/_/g, " ");
+        const mv = vibe.movement || {};
+        document.getElementById("move-lab").textContent =
+          `move ${sc.movement_label || mv.movement_label || "—"} · ${mv.mean_person_speed_px_s ?? "—"} px/s · moving ${mv.moving_people ?? 0}`;
+
+        const drinksYolo = sc.drinks_visible ?? (vibe.drinks || {}).visible_now ?? 0;
+        const drinksEst = sc.drinks_est ?? (pub && pub.drinks_est) ?? drinksYolo;
+        document.getElementById("drinks-n").textContent =
+          drinksYolo > 0 ? drinksYolo : `~${drinksEst}`;
+        document.getElementById("drinks-note").textContent =
+          (pub && pub.drinks_note) || "YOLO drinkware · not sales counts";
+        setPill(document.getElementById("eat-lab"), sc.eating_label || (vibe.eating || {}).label || "—");
+        const ea = vibe.eating || {};
+        document.getElementById("eat-note").textContent =
+          `score ${ea.activity_score ?? "—"} · food ${ea.food_objects_visible ?? 0}`;
+
+        // Pub panel
+        const pubPanel = document.getElementById("pub-panel");
+        if (pub) {
+          pubPanel.classList.remove("hidden");
+          document.getElementById("pub-stream").textContent =
+            m.stream_title || sc.scene_title || "pub";
+          setPill(document.getElementById("bar-pressure"), pub.bar_pressure || "—");
+          document.getElementById("bar-crowd").textContent =
+            `bar people ≈ ${pub.bar_crowd_est ?? 0} · standing center ≈ ${pub.standing_center_est ?? 0}`;
+          setPill(document.getElementById("social-energy"), pub.social_energy || "—");
+          document.getElementById("pub-service").textContent = pub.service_hint || "—";
+          document.getElementById("pub-drinks").textContent =
+            pub.drinks_visible > 0 ? pub.drinks_visible : `~${pub.drinks_est ?? 0}`;
+          document.getElementById("pub-drinks-note").textContent = pub.drinks_note || "proxy";
+          document.getElementById("pub-hint").textContent =
+            pub.service_hint || sc.staffing_hint || "—";
+        } else {
+          pubPanel.classList.add("hidden");
+        }
+
+        // Kitchen panel
+        const kitPanel = document.getElementById("kitchen-panel");
+        if (kit) {
+          kitPanel.classList.remove("hidden");
+          setPill(document.getElementById("cook-load"), kit.cooking_load || "—");
+          document.getElementById("cook-staff").textContent =
+            `cook ≈ ${kit.cook_staff_est ?? 0} · stations ${kit.cook_active_stations ?? 0}`;
+          setPill(document.getElementById("plate-pressure"), kit.plating_pressure || "—");
+          document.getElementById("plate-staff").textContent =
+            `plating ≈ ${kit.plating_staff_est ?? 0} · food ${kit.food_objects_visible ?? 0}`;
+          setPill(document.getElementById("line-pace"), kit.line_pace || "—");
+          document.getElementById("line-balance").textContent =
+            `balance ${kit.line_balance_score ?? "—"} / 100 · ${kit.mean_hand_speed_px_s ?? "—"} px/s`;
+          document.getElementById("line-hint").textContent = kit.line_hint || "—";
+          document.getElementById("kit-food").textContent =
+            `motion ${kit.station_motion || "—"}`;
+        } else {
+          kitPanel.classList.add("hidden");
+        }
+
+        // Tables
+        const tables = m.tables || [];
+        document.getElementById("tables-summary").textContent =
+          `${tOcc} occupied · ${tFree} free · ${seated}/${cap || "—"} seats`;
+        document.getElementById("tables").innerHTML =
+          tables
+            .map((tb) => {
+              const st = (tb.state || "free").toLowerCase();
+              const label = st === "occupied" ? t.occupied : t.free;
+              const n = tb.person_count_est ?? 0;
+              const c = tb.capacity_hint ?? 0;
+              const fr = tb.fill_rate != null ? tb.fill_rate : c ? n / c : 0;
+              return `<div class="tcard ${st}">
+                <div class="name">${tb.label || tb.zone_id}</div>
+                <div class="state">${label}</div>
+                <div class="people">${n} people · cap ${c || "—"}</div>
+                <div class="fill"><i style="width:${Math.min(100, Math.round(fr * 100))}%"></i></div>
+              </div>`;
+            })
+            .join("") || `<div class="empty">No zones configured</div>`;
+
+        // Events
+        const rows = (e.events || [])
+          .map((ev) => {
+            const ts = (ev.timestamp || "").toString().replace("T", " ").slice(11, 19);
+            const zone = ev.zone?.label || ev.zone?.zone_id || "—";
+            const et = (ev.event_type || ev.id || "—").toString();
+            return `<tr>
+              <td class="ev-time">${ts || "—"}</td>
+              <td><span class="ev-type">${et}</span></td>
+              <td class="ev-zone">${zone}</td>
+              <td class="ev-zone">${ev.redaction_status || "—"}</td>
+            </tr>`;
+          })
+          .join("");
+        document.getElementById("events").innerHTML =
+          rows || `<tr><td colspan="4" class="empty">No events yet</td></tr>`;
+
+        const thr = sc.thresholds || {};
+        document.getElementById("metric-tune").textContent =
+          `metric v${sc.metric_version ?? 1} · busy≥${thr.busy ?? "—"} very≥${thr.very_busy ?? "—"} · next tune ${sc.next_improve_in_sec ?? "—"}s`;
+      } catch (err) {
+        console.warn(err);
+        document.getElementById("site-line").textContent = "Waiting for edge agent…";
+      }
+    }
+
+    async function askChat() {
+      const q = document.getElementById("chat-input").value.trim();
+      if (!q) return;
+      const box = document.getElementById("chat-box");
+      box.dataset.answered = "1";
+      box.textContent = "…";
+      try {
+        const m = await fetch("/local/metrics").then((r) => r.json());
+        let answer = null;
+        try {
+          const r = await fetch(cloudBase + "/v1/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ site_id: m.site_id, question: q, lang }),
+          });
+          if (r.ok) {
+            const j = await r.json();
+            answer = j.answer || j.message;
+          }
+        } catch (_) {}
+        if (!answer) {
+          const sc = m.scene || {};
+          const free = (m.tables || [])
+            .filter((x) => x.state === "free")
+            .map((x) => x.label || x.zone_id);
+          const occ = (m.tables || [])
+            .filter((x) => x.state === "occupied")
+            .map((x) => x.label || x.zone_id);
+          if (/free|खाली|available/i.test(q)) {
+            answer = free.length ? `Free: ${free.join(", ")}` : "No free tables right now.";
+          } else if (/occup|busy|व्यस्त/i.test(q)) {
+            answer = occ.length ? `Occupied: ${occ.join(", ")}` : "All tables free.";
+          } else if (/bar|queue|कतार/i.test(q)) {
+            answer = `Bar ≈ ${m.bar_crowd_est ?? (sc.pub || {}).bar_crowd_est ?? 0}, queues ≈ ${m.entrance_queue_count || 0}`;
+          } else if (/people|crowd|load/i.test(q)) {
+            answer = `People now: ${sc.person_count ?? 0}, load: ${sc.floor_load || "—"}. ${sc.staffing_hint || ""}`;
+          } else {
+            answer = "Try: free tables, occupied tables, bar, people, or load.";
+          }
+        }
+        box.textContent = answer;
+      } catch (err) {
+        box.textContent = "Could not answer: " + err;
+      }
+    }
+
+    document.getElementById("chat-input").addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") askChat();
+    });
+
+    setLang("en");
+    tickClock();
+    setInterval(tickClock, 1000);
+    setInterval(refresh, 1500);
+    refresh();
+  </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+{
+  "version": "zones.v1",
+  "site_id": "lab-youtube-lyns-sisig",
+  "camera_id": "cam-youtube-live",
+  "image_width": 640,
+  "image_height": 480,
+  "zones": [
+    {
+      "zone_id": "table-1",
+      "label": "Zone A (front-left)",
+      "kind": "table",
+      "polygon": [[20, 200], [210, 200], [210, 460], [20, 460]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-2",
+      "label": "Zone B (front-center)",
+      "kind": "table",
+      "polygon": [[220, 200], [420, 200], [420, 460], [220, 460]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-3",
+      "label": "Zone C (front-right)",
+      "kind": "table",
+      "polygon": [[430, 200], [620, 200], [620, 460], [430, 460]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-4",
+      "label": "Zone D (back-left)",
+      "kind": "table",
+      "polygon": [[20, 40], [210, 40], [210, 190], [20, 190]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "table-5",
+      "label": "Zone E (back-right)",
+      "kind": "table",
+      "polygon": [[430, 40], [620, 40], [620, 190], [430, 190]],
+      "capacity_hint": 4
+    },
+    {
+      "zone_id": "entrance-main",
+      "label": "Aisle / entrance band",
+      "kind": "entrance",
+      "polygon": [[220, 40], [420, 40], [420, 190], [220, 190]]
+    },
+    {
+      "zone_id": "queue-host",
+      "label": "Service / queue band",
+      "kind": "queue",
+      "polygon": [[200, 160], [440, 160], [440, 240], [200, 240]]
+    }
+  ]
+}

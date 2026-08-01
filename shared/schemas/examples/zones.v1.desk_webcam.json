@@ -1,0 +1,16 @@
+{
+  "version": "zones.v1",
+  "site_id": "lab-site-001",
+  "camera_id": "cam-desk-webcam",
+  "image_width": 640,
+  "image_height": 480,
+  "zones": [
+    {
+      "zone_id": "table-1",
+      "label": "Desk / person ROI",
+      "kind": "table",
+      "polygon": [[40, 40], [600, 40], [600, 460], [40, 460]],
+      "capacity_hint": 1
+    }
+  ]
+}

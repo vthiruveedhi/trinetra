@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rasaops.local/schemas/zones.v1.schema.json",
+  "title": "RasaOps zones.v1",
+  "type": "object",
+  "required": ["version", "site_id", "zones"],
+  "properties": {
+    "version": { "const": "zones.v1" },
+    "site_id": { "type": "string", "minLength": 1 },
+    "camera_id": { "type": "string" },
+    "image_width": { "type": "integer", "minimum": 1 },
+    "image_height": { "type": "integer", "minimum": 1 },
+    "zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["zone_id", "kind", "polygon"],
+        "properties": {
+          "zone_id": { "type": "string" },
+          "label": { "type": "string" },
+          "kind": {
+            "type": "string",
+            "enum": ["table", "entrance", "queue", "pass", "other"]
+          },
+          "polygon": {
+            "type": "array",
+            "minItems": 3,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "type": "number" }
+            }
+          },
+          "capacity_hint": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

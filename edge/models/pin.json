@@ -1,0 +1,17 @@
+{
+  "default_edge_model": {
+    "artifact": "yolo11n_int8_320.onnx",
+    "family": "YOLO11n",
+    "input_size": 320,
+    "quantization": "INT8 (preferred) or FP32 export renamed for dogfood",
+    "sha256": "PENDING_AFTER_EXPORT",
+    "license_note": "Track Ultralytics AGPL vs enterprise before pilot commercial ship",
+    "bench_script": "edge/scripts/bench_edge_inference.py",
+    "p95_inference_ms_gate": 150
+  },
+  "ci_smoke_model": {
+    "artifact": "tiny_yolo_like_320.onnx",
+    "purpose": "CI / no-weights path; not for product accuracy",
+    "generate": "python edge/scripts/make_tiny_onnx.py"
+  }
+}

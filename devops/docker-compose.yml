@@ -1,0 +1,79 @@
+# RasaOps L1 DevEx — cloud stubs + optional edge mock services
+# Primary daily development path on Windows/macOS/Linux.
+# Usage: docker compose -f devops/docker-compose.yml up -d
+
+name: rasaops
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rasaops
+      POSTGRES_PASSWORD: rasaops_dev
+      POSTGRES_DB: rasaops
+    ports:
+      - "5432:5432"
+    volumes:
+      - rasaops_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rasaops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: rasaops
+      MINIO_ROOT_PASSWORD: rasaops_dev_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rasaops_minio:/data
+
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  # L1 cloud API (host path preferred: python -m cloud.api)
+  api:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ../:/app
+    command:
+      [
+        "bash",
+        "-lc",
+        "pip install -q fastapi uvicorn pydantic httpx && PYTHONPATH=/app python -m cloud.api",
+      ]
+    ports:
+      - "8080:8080"
+    profiles:
+      - full
+
+volumes:
+  rasaops_pg:
+  rasaops_minio:

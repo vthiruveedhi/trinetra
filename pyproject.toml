@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rasaops"
+version = "0.0.1"
+description = "RasaOps monorepo — restaurant operations AI (India)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "RasaOps Engineering" }]
+dependencies = [
+  "pydantic>=2.6",
+  "pyyaml>=6.0",
+  "jsonschema>=4.21",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+edge = [
+  # OpenCV 4.x (not 5): full GUI + HOG person detector for host webcam dogfood
+  "opencv-python>=4.9,<5",
+  "numpy>=1.26",
+  "onnxruntime>=1.17",
+  "onnx>=1.15",
+  "yt-dlp>=2024.8.0",
+  # Host-lab high-recall people count (imgsz 640); Pi path stays ONNX 320
+  "ultralytics>=8.3.0",
+  "torch>=2.1.0",
+]
+cloud = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "httpx>=0.27",
+]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.3",
+  "httpx>=0.27",
+  "numpy>=1.26",
+]
+
+[project.scripts]
+rasaops-edge-smoke = "rasaops_edge.scripts.smoke_capture:main"
+rasaops-pipeline-smoke = "rasaops_edge.scripts.run_pipeline_smoke:main"
+rasaops-webcam = "rasaops_edge.scripts.run_webcam_dogfood:main"
+rasaops-edge-agent = "rasaops_edge.scripts.run_edge_agent:main"
+rasaops-live-view = "rasaops_edge.scripts.run_live_view:main"
+rasaops-cloud = "cloud.api.__main__:main"
+
+[tool.setuptools.packages.find]
+where = [".", "edge", "shared/python"]
+include = ["rasaops_edge*", "rasaops_shared*", "cloud*"]
+
+[tool.pytest.ini_options]
+testpaths = ["edge/tests", "shared/python/tests", "cloud/tests"]
+pythonpath = [".", "edge", "shared/python"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

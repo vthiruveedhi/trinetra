@@ -1,0 +1,57 @@
+# Provisional defaults — architecture threshold table (tunable per site)
+capture:
+  source: webcam  # webcam | file | csi | rtsp
+  target_fps: 2.0
+  camera_index: 0
+  video_path: devops/virtual-pi/fixtures/sample_dining.mp4
+
+inference:
+  backend: auto  # auto | onnx | mock
+  model: edge/models/yolo11n_int8_320.onnx
+  input_size: 320
+  conf_thres: 0.25
+
+zones:
+  path: shared/schemas/examples/zones.v1.sample.json
+
+occupancy:
+  t_enter_sec: 3.0
+  t_leave_sec: 10.0
+  min_track_hits: 1
+
+tracker:
+  match_iou: 0.3
+  max_age_frames: 30
+  max_track_sec: 120.0
+  high_thresh: 0.5
+
+queue:
+  min_count: 4
+  min_duration_sec: 15.0
+
+privacy:
+  fail_closed_upload: true
+  face_conf_min: 0.50
+  head_roi_frac: 0.30
+  min_person_side_px: 8.0
+  blur_ksize: 31
+
+audio:
+  metrics_enabled: false
+  noise_z_threshold: 2.5
+  noise_dwell_s: 10
+
+entitlements:
+  frames_upload: true  # Lite plans set false
+
+sync:
+  cloud_base_url: http://127.0.0.1:8080
+  mqtt_host: 127.0.0.1
+  mqtt_port: 1883
+  offline_queue_dir: data/edge
+  batch_size: 10
+  every_sec: 3.0
+
+dashboard:
+  host: 127.0.0.1
+  port: 8090

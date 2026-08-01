@@ -2,13 +2,23 @@
 
 Runs on Raspberry Pi 5 (production) or host / Virtual Pi (dev).
 
-## L1 dogfood smoke (Windows)
+## L1 dogfood smoke
+
+```bash
+# macOS
+bash scripts/mac/setup_mac.sh
+source .venv/bin/activate
+```
 
 ```powershell
+# Windows
 cd C:\Users\tvikr\restaurant-ops-ai
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev,edge]"
+```
+
+```bash
 pytest -q
 python -m rasaops_edge.scripts.smoke_capture --frames 3
 python -m rasaops_edge.scripts.run_pipeline_smoke --frames 12

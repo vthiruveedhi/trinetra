@@ -158,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
         "--high-priority",
         action="store_true",
         default=True,
-        help="Raise process priority (Windows HIGH_PRIORITY_CLASS)",
+        help="Raise process priority (Windows HIGH_PRIORITY / Unix nice)",
     )
     args = p.parse_args(argv)
 
@@ -216,13 +216,24 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.high_priority:
         try:
-            import ctypes
+            import sys
 
-            # HIGH_PRIORITY_CLASS = 0x00000080
-            ctypes.windll.kernel32.SetPriorityClass(
-                ctypes.windll.kernel32.GetCurrentProcess(), 0x00000080
-            )
-            print("Process priority: HIGH")
+            if os.name == "nt":
+                import ctypes
+
+                # HIGH_PRIORITY_CLASS = 0x00000080
+                ctypes.windll.kernel32.SetPriorityClass(
+                    ctypes.windll.kernel32.GetCurrentProcess(), 0x00000080
+                )
+                print("Process priority: HIGH (Windows)")
+            else:
+                # Lower nice value = higher priority (may need privileges on some systems)
+                try:
+                    os.nice(-5)
+                    print("Process priority: nice -5 (Unix/macOS)")
+                except PermissionError:
+                    # Best-effort without root
+                    print("Process priority: default (nice not permitted without privileges)")
         except Exception as exc:
             print(f"Could not raise process priority: {exc}")
 

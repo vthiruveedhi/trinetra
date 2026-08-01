@@ -21,11 +21,18 @@ This file is loaded automatically by Grok (and similar coding agents) in this re
 
 - Stream: Coopers Live `https://www.youtube.com/watch?v=0JGQo-vAgwQ`
 - Scene: `pub_bar`
-- Script: `.\scripts\Start-RasaOps-Demo.ps1`
+- Scripts: Windows `scripts/Start-RasaOps-Demo.ps1` · macOS `scripts/mac/start_demo.sh`
 
 ## Quick commands
 
+```bash
+# macOS
+bash scripts/mac/setup_mac.sh
+bash scripts/mac/start_demo.sh
+```
+
 ```powershell
+# Windows
 cd C:\Users\tvikr\restaurant-ops-ai
 .\.venv\Scripts\Activate.ps1
 pytest -q

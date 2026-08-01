@@ -19,8 +19,9 @@ build/
 .mypy_cache/
 *.egg-info/
 rasaops.egg-info/
-# Runtime lab data (frames, sqlite, snapshots)
+# Runtime lab data (frames, sqlite, snapshots, mac demo logs/pids)
 data/
+!data/.gitkeep
 *.sqlite
 *.db
 edge/models/*.jpg

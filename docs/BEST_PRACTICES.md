@@ -135,7 +135,7 @@ Adapted from operational dashboard practice: glanceable status in 3–6 seconds,
 
 ### Must
 
-- **Host lab (Windows):** `auto` prefers **Ultralytics yolo11n.pt @ imgsz 640** when present — 320px ONNX often undercounts crowded pubs by 50%+ (e.g. 8 vs ~20 true).
+- **Host lab (Windows/macOS):** `auto` prefers **Ultralytics yolo11n.pt @ imgsz 640** when present — 320px ONNX often undercounts crowded pubs by 50%+ (e.g. 8 vs ~20 true).
 - **Pi product path:** **YOLO11n INT8 ONNX 320** (`yolo11n_int8_320.onnx`); never use `tiny_yolo_like` for live people.
 - Backend factory: `auto` → ultralytics (host) → ONNX → HOG → mock. Force with `RASAOPS_INFERENCE_BACKEND=onnx|ultralytics`.
 - **Person conf** ~0.15 (ultralytics) / ~0.18–0.22 (onnx); **small objects** ~0.10–0.15.
@@ -208,13 +208,20 @@ Adapted from operational dashboard practice: glanceable status in 3–6 seconds,
 
 ### Must
 
+```bash
+# macOS preferred clean demo
+bash scripts/mac/setup_mac.sh
+bash scripts/mac/start_demo.sh
+bash scripts/mac/stop_demo.sh
+```
+
 ```powershell
-# Preferred clean demo
+# Windows preferred clean demo
 .\scripts\Start-RasaOps-Demo.ps1
 
-# Or explicit
-.\.venv\Scripts\python.exe -m rasaops_edge.scripts.run_edge_agent --youtube URL --with-cloud --scene pub_bar
-.\.venv\Scripts\python.exe -m rasaops_edge.scripts.run_live_view --youtube URL --scene pub_bar --fps 5 --max-height 480
+# Explicit (any platform, after venv activate)
+python -m rasaops_edge.scripts.run_edge_agent --youtube URL --with-cloud --scene pub_bar
+python -m rasaops_edge.scripts.run_live_view --youtube URL --scene pub_bar --fps 3 --max-height 480
 ```
 
 - Tests: `pytest -q` before claiming green.

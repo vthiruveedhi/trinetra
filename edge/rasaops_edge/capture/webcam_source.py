@@ -69,6 +69,8 @@ class WebcamSource:
         if self.backend is not None:
             return [self.backend]
 
+        import sys
+
         if os.name == "nt":
             dshow = getattr(cv2, "CAP_DSHOW", None)
             msmf = getattr(cv2, "CAP_MSMF", None)
@@ -78,6 +80,18 @@ class WebcamSource:
                 return [dshow, msmf, 0]
             # default: DirectShow only first — avoid MSMF grab bugs
             return [dshow, 0, msmf]
+        if sys.platform == "darwin":
+            # macOS: AVFoundation is the reliable OpenCV backend for webcams
+            avf = getattr(cv2, "CAP_AVFOUNDATION", None)
+            if pref in ("avfoundation", "avf", ""):
+                return [avf, 0] if avf is not None else [0]
+            if pref == "any":
+                return [avf, 0] if avf is not None else [0]
+            return [0]
+        # Linux: V4L2 when available
+        v4l = getattr(cv2, "CAP_V4L2", None)
+        if v4l is not None:
+            return [v4l, 0]
         return [0]
 
     def open(self) -> None:

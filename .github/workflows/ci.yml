@@ -2,20 +2,26 @@ name: ci
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, "feature/**"]
   pull_request:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12"]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install
         run: |
           python -m pip install --upgrade pip
+          # Mock-friendly install; ultralytics/torch are heavy — allow failure soft on pure smoke?
           pip install -e ".[dev,edge]"
       - name: Tiny ONNX
         run: python edge/scripts/make_tiny_onnx.py
@@ -29,3 +35,9 @@ jobs:
         run: python -m rasaops_edge.scripts.run_pipeline_smoke --frames 12
       - name: Inference bench
         run: python edge/scripts/bench_edge_inference.py --backend mock --iters 10
+      - name: mac scripts syntax
+        if: runner.os == 'macOS'
+        run: |
+          bash -n scripts/mac/setup_mac.sh
+          bash -n scripts/mac/start_demo.sh
+          bash -n scripts/mac/stop_demo.sh

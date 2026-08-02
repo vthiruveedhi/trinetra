@@ -1,0 +1,22 @@
+{
+  "version": "zones.v1",
+  "site_id": "garage-site",
+  "camera_id": "garage-cam-rtsp",
+  "image_width": 2304,
+  "image_height": 1296,
+  "zones": [
+    {
+      "zone_id": "entry-zone",
+      "label": "Entry",
+      "kind": "entrance",
+      "polygon": [[0, 0], [2304, 0], [2304, 300], [0, 300]]
+    },
+    {
+      "zone_id": "main-area",
+      "label": "Main area",
+      "kind": "other",
+      "polygon": [[0, 300], [2304, 300], [2304, 1296], [0, 1296]],
+      "capacity_hint": 10
+    }
+  ]
+}

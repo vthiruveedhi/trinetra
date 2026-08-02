@@ -99,10 +99,12 @@ def main() -> None:
 
             # Report every 10 frames
             if frame_count % 10 == 0 or args.verbose:
+                dets = result.metrics.get("detection_count", 0)
+                tracks = result.metrics.get("track_count", 0)
                 print(
                     f"[{frame_count:3d}] "
-                    f"dets={result.detection_count} "
-                    f"tracks={result.track_count} "
+                    f"dets={dets} "
+                    f"tracks={tracks} "
                     f"inf={result.inference_ms:.1f}ms "
                     f"fps={fps_actual:.1f} "
                     f"events={len(result.events)}"
@@ -110,7 +112,9 @@ def main() -> None:
 
             if args.verbose and result.events:
                 for ev in result.events:
-                    print(f"      event: {ev.event_type} @ table={ev.table_id}")
+                    event_type = getattr(ev, 'event_type', 'unknown')
+                    table_id = getattr(ev, 'table_id', '?')
+                    print(f"      event: {event_type} @ table={table_id}")
 
             if frame_count >= args.frames:
                 break

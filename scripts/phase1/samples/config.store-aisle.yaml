@@ -1,0 +1,31 @@
+# Tuned for samples/store-aisle-detection.mp4 (720x404).
+# Three horizontal bands simulate a restaurant-style entry / dining / counter
+# layout — front of frame = "entry", middle = "browsing/dining", far = "counter/back".
+model: yolo11n.pt
+confidence: 0.4
+classes: [0]
+
+zones:
+  - name: entry
+    polygon:
+      - [0,   280]
+      - [720, 280]
+      - [720, 404]
+      - [0,   404]
+  - name: dining
+    polygon:
+      - [0,   150]
+      - [720, 150]
+      - [720, 280]
+      - [0,   280]
+  - name: counter
+    polygon:
+      - [0,   0]
+      - [720, 0]
+      - [720, 150]
+      - [0,   150]
+
+lines:
+  - name: midline
+    from: [0,   220]
+    to:   [720, 220]

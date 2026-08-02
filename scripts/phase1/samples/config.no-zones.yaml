@@ -1,0 +1,5 @@
+# Zone-free config — pure detection + tracking, no zone dwells, no line crossings.
+# Useful for testing on a new video before you know its layout.
+model: yolo11n.pt
+confidence: 0.4
+classes: [0]

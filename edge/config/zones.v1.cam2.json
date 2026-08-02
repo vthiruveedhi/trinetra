@@ -1,0 +1,22 @@
+{
+  "version": "zones.v1",
+  "site_id": "site-cam2",
+  "camera_id": "cam2-rtsp",
+  "image_width": 2304,
+  "image_height": 1296,
+  "zones": [
+    {
+      "zone_id": "entry",
+      "label": "Entry",
+      "kind": "entrance",
+      "polygon": [[0, 0], [2304, 0], [2304, 300], [0, 300]]
+    },
+    {
+      "zone_id": "main",
+      "label": "Main",
+      "kind": "other",
+      "polygon": [[0, 300], [2304, 300], [2304, 1296], [0, 1296]],
+      "capacity_hint": 10
+    }
+  ]
+}

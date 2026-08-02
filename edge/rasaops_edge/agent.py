@@ -15,6 +15,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 
+from rasaops_edge.capture.rtsp_source import RTSPSource
 from rasaops_edge.capture.webcam_source import WebcamSource
 from rasaops_edge.capture.youtube_source import YoutubeSource
 from rasaops_edge.dashboard_api.app import DashboardState
@@ -33,7 +34,8 @@ class EdgeAgentConfig:
     device_id: str = "lab-pc-webcam"
     camera_index: int = 0
     youtube_url: Optional[str] = None
-    source: str = "webcam"  # webcam | youtube
+    rtsp_url: Optional[str] = None
+    source: str = "webcam"  # webcam | youtube | rtsp
     fps: float = 2.0
     enter_sec: float = 2.0
     leave_sec: float = 4.0
@@ -99,7 +101,7 @@ class EdgeAgent:
             config=scene_cfg,
             state_path=data / f"scene_metrics_{self.config.scene_type}.json",
         )
-        self._src: Optional[Union[WebcamSource, YoutubeSource]] = None
+        self._src: Optional[Union[WebcamSource, YoutubeSource, RTSPSource]] = None
         self.source_label: str = self.config.source
 
     def start_background(self) -> None:
@@ -119,7 +121,13 @@ class EdgeAgent:
 
     def run_loop(self) -> None:
         cfg = self.config
-        if cfg.source == "youtube" or cfg.youtube_url:
+        if cfg.source == "rtsp" or cfg.rtsp_url:
+            url = cfg.rtsp_url or ""
+            if not url:
+                raise RuntimeError("rtsp source requires rtsp_url")
+            self._src = RTSPSource(url=url, target_fps=cfg.fps)
+            self.source_label = f"rtsp:{url.split('@')[-1]}"  # mask credentials
+        elif cfg.source == "youtube" or cfg.youtube_url:
             url = cfg.youtube_url or ""
             if not url:
                 raise RuntimeError("youtube source requires youtube_url")

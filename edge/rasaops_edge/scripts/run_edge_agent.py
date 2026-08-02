@@ -32,6 +32,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=f"YouTube live/VOD URL (default if flag alone: {DEFAULT_YT})",
     )
+    p.add_argument("--rtsp", default=None, help="RTSP URL (IP camera). Overrides camera/youtube.")
     p.add_argument("--fps", type=float, default=1.0)
     p.add_argument(
         "--zones",
@@ -39,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
         help="zones.v1.json path (defaults: desk webcam or restaurant_live for youtube)",
     )
     p.add_argument("--port", type=int, default=8090, help="Local kiosk API port")
+    p.add_argument("--host", default="0.0.0.0", help="Bind host (0.0.0.0 = reachable on LAN)")
     p.add_argument(
         "--cloud-url",
         default=os.environ.get("RASAOPS_CLOUD_BASE_URL", "http://127.0.0.1:18080"),
@@ -78,8 +80,45 @@ def main(argv: list[str] | None = None) -> int:
     from rasaops_edge.dashboard_api.app import create_app
     import uvicorn
 
-    use_yt = bool(args.youtube)
+    use_rtsp = bool(args.rtsp)
+    use_yt = bool(args.youtube) and not use_rtsp
     yt = (args.youtube or "").lower()
+
+    # RTSP path: simple occupancy/person-count scene, garage zones by default
+    if use_rtsp:
+        scene = args.scene if args.scene and args.scene != "auto" else "dining_restaurant"
+        zones = args.zones or str(_ROOT / "edge" / "config" / "zones.v1.garage640.json")
+        device_id = args.device_id or "pi-rtsp-cam"
+        site_id = "rtsp-site"
+        cfg = EdgeAgentConfig(
+            zones_path=zones,
+            device_id=device_id,
+            site_id=site_id,
+            rtsp_url=args.rtsp,
+            source="rtsp",
+            fps=args.fps,
+            data_dir=_ROOT / "data" / "edge",
+            cloud_base_url=args.cloud_url,
+            backend=args.backend,
+            scrub=not args.no_scrub,
+            improve_interval_sec=max(60.0, args.improve_minutes * 60.0),
+            scene_type=scene,
+        )
+        agent = EdgeAgent(config=cfg)
+        agent.start_background()
+        app = create_app(agent.state)
+        print(f"Kiosk UI:  http://{args.host}:{args.port}/")
+        print(f"Metrics:   http://{args.host}:{args.port}/local/metrics")
+        print(f"Source:    RTSP {args.rtsp.split('@')[-1]}")
+        print(f"Zones:     {Path(zones).name}")
+        print("Ctrl+C to stop.")
+        try:
+            uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+        except KeyboardInterrupt:
+            pass
+        finally:
+            agent.stop()
+        return 0
 
     # Auto scene + zones from known demo streams
     scene = args.scene or "auto"

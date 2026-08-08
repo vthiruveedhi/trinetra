@@ -46,7 +46,7 @@ SOURCE_URL = (os.environ.get("SOURCE_URL") or os.environ.get("RTSP_URL")
 PORT = int(os.environ.get("PORT", "8090"))
 PERSON_CLASS = 0
 SCORE_TH = float(os.environ.get("SCORE_TH", "0.35"))
-YT_MAX_H = int(os.environ.get("YT_MAX_HEIGHT", "720"))
+YT_MAX_H = int(os.environ.get("YT_MAX_HEIGHT", "480"))
 YT_REFRESH_SEC = 300.0
 REID_TH = float(os.environ.get("REID_TH", "0.55"))      # cosine sim to call it same person
 GALLERY_TTL = float(os.environ.get("GALLERY_TTL", "25"))  # sec a lost person is remembered
@@ -74,7 +74,9 @@ def resolve_youtube(page_url):
         raise RuntimeError("yt-dlp not found (venv + PATH). Set YT_DLP_BIN.")
     fmt = (f"best[height<={YT_MAX_H}][ext=mp4][protocol^=http]/"
            f"best[height<={YT_MAX_H}][ext=mp4]/best[height<={YT_MAX_H}]/best[ext=mp4]/best")
-    base = ["-g", "-f", fmt, "--no-warnings", "--quiet", "--no-playlist"]
+    # --force-ipv4: googlevideo CDN over a half-broken IPv6 route is the usual
+    # cause of "Connection timed out" when fetching segments on a Pi.
+    base = ["-g", "-f", fmt, "--no-warnings", "--quiet", "--no-playlist", "--force-ipv4"]
     last = None
     for ea in ("youtube:player_client=android,ios",
                "youtube:player_client=tv_embedded,mweb", None):
@@ -99,8 +101,12 @@ class Source:
 
     def open(self):
         self.close()
-        target = resolve_youtube(self.url) if self.is_yt else self.url
-        if not self.is_yt:
+        if self.is_yt:
+            target = resolve_youtube(self.url)
+            # fail a stuck segment fetch in ~8s instead of hanging ~30s
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rw_timeout;8000000"
+        else:
+            target = self.url
             os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
         cap = cv2.VideoCapture(target, cv2.CAP_FFMPEG)
         try:
@@ -114,12 +120,17 @@ class Source:
 
     def read(self):
         if self.cap is None:
-            self.open()
+            try:
+                self.open()
+            except Exception:
+                return None
         if self.is_yt and time.time() - self.opened_at > YT_REFRESH_SEC:
             try:
                 self.open()
             except Exception:
                 pass
+        if self.cap is None:          # open() failed above — don't touch None
+            return None
         ok, frame = self.cap.read()
         return frame if (ok and frame is not None and frame.size) else None
 
@@ -487,7 +498,12 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     threading.Thread(target=detect_loop, name="detect", daemon=True).start()
     print(f"[web] open http://0.0.0.0:{PORT}/  (Ctrl+C to stop)")
-    ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+    try:
+        ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+    except KeyboardInterrupt:
+        print("\nstopping…")
+    finally:
+        os._exit(0)  # skip Hailo C++ destructors that abort noisily at shutdown
 
 
 if __name__ == "__main__":

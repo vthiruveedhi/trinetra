@@ -49,7 +49,7 @@ SCORE_TH = float(os.environ.get("SCORE_TH", "0.35"))
 YT_MAX_H = int(os.environ.get("YT_MAX_HEIGHT", "480"))
 YT_REFRESH_SEC = 300.0
 REID_TH = float(os.environ.get("REID_TH", "0.55"))      # cosine sim to call it same person
-GALLERY_TTL = float(os.environ.get("GALLERY_TTL", "25"))  # sec a lost person is remembered
+GALLERY_TTL = float(os.environ.get("GALLERY_TTL", "40"))  # sec a lost person is remembered
 DOOR_FLIP = os.environ.get("DOOR_FLIP", "0") not in ("0", "", "false", "no")
 
 STATE = {"jpeg": None, "now": 0, "peak": 0, "avg60": 0.0, "fps": 0.0,
@@ -175,7 +175,7 @@ def line_side(pt, l1, l2):
 
 class PeopleTracker:
     """IoU tracking + in-memory re-ID gallery + door line crossing."""
-    def __init__(self, iou_th=0.25, max_missed=30, min_hits=3):
+    def __init__(self, iou_th=0.25, max_missed=45, min_hits=3):
         self.iou_th, self.max_missed, self.min_hits = iou_th, max_missed, min_hits
         self.tracks = {}          # local_id -> dict
         self.gallery = {}         # global_id -> {"emb","last"}
@@ -422,7 +422,7 @@ footer{color:var(--mut);font-size:12px;margin-top:16px;text-align:center;line-he
     <div class=stat><div class=k>Left</div><div class=v id=left>–</div>
       <div class=s>crossed the door out</div></div>
     <div class=stat><div class=k>Unique · re-ID</div><div class=v id=unique>–</div>
-      <div class=s>distinct people (approx)</div></div>
+      <div class=s>experimental · needs OSNet model</div></div>
     <div class=stat><div class=k>Avg · 60s</div><div class=v id=avg>–</div>
       <div class=s>rolling average</div></div>
     <div class="stat eng"><div class=k>Engine</div><div class=v id=eng>–</div>

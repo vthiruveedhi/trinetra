@@ -48,12 +48,14 @@ PERSON_CLASS = 0
 SCORE_TH = float(os.environ.get("SCORE_TH", "0.35"))
 YT_MAX_H = int(os.environ.get("YT_MAX_HEIGHT", "480"))
 YT_REFRESH_SEC = 300.0
-REID_TH = float(os.environ.get("REID_TH", "0.55"))      # cosine sim to call it same person
+REID_MODEL = os.environ.get("REID_MODEL", "/opt/rasaops/models/osnet_x1_0.hef")
+REID_INPUT = (256, 128)  # (H, W) the re-ID net expects
+REID_TH = float(os.environ.get("REID_TH", "0.5"))       # cosine sim to call it same person
 GALLERY_TTL = float(os.environ.get("GALLERY_TTL", "40"))  # sec a lost person is remembered
 DOOR_FLIP = os.environ.get("DOOR_FLIP", "0") not in ("0", "", "false", "no")
 
 STATE = {"jpeg": None, "now": 0, "peak": 0, "avg60": 0.0, "fps": 0.0,
-         "entered": 0, "left": 0, "unique": 0,
+         "entered": 0, "left": 0, "unique": 0, "reid": "",
          "model": os.path.basename(MODEL), "source": "", "live": False,
          "history": collections.deque(maxlen=120)}
 LOCK = threading.Lock()
@@ -144,8 +146,8 @@ class Source:
 
 
 # ----------------------------- re-ID + tracking -----------------------------
-def embed(crop):
-    """Cheap appearance fingerprint: normalized HSV hue-sat histogram."""
+def hsv_embed(crop):
+    """Fallback fingerprint: normalized HSV hue-sat histogram (weak on grayscale)."""
     if crop is None or crop.size == 0 or crop.shape[0] < 4 or crop.shape[1] < 4:
         return None
     hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
@@ -175,7 +177,8 @@ def line_side(pt, l1, l2):
 
 class PeopleTracker:
     """IoU tracking + in-memory re-ID gallery + door line crossing."""
-    def __init__(self, iou_th=0.25, max_missed=45, min_hits=3):
+    def __init__(self, embed_fn, iou_th=0.25, max_missed=45, min_hits=3):
+        self.embed_fn = embed_fn
         self.iou_th, self.max_missed, self.min_hits = iou_th, max_missed, min_hits
         self.tracks = {}          # local_id -> dict
         self.gallery = {}         # global_id -> {"emb","last"}
@@ -222,10 +225,11 @@ class PeopleTracker:
                 t.update(box=box, cx=cx, cy=cy, missed=0, matched=True, hits=t["hits"] + 1)
             else:
                 crop = frame[max(0, box[1]):box[3], max(0, box[0]):box[2]]
-                gid = self._reid(embed(crop), tnow)
+                emb = self.embed_fn(crop)
+                gid = self._reid(emb, tnow)
                 self.tracks[self.next_local] = {
                     "box": box, "cx": cx, "cy": cy, "missed": 0, "matched": True,
-                    "hits": 1, "gid": gid, "side": None, "emb": embed(crop)}
+                    "hits": 1, "gid": gid, "side": None, "emb": emb}
                 self.next_local += 1
 
         # door line crossing (confirmed tracks only)
@@ -261,28 +265,41 @@ class PeopleTracker:
                 if t["missed"] == 0 and t["hits"] >= self.min_hits]
 
 
-# ----------------------------- detector -----------------------------
+# ------------------- Hailo device: 1+ models via scheduler -------------------
+class HailoDevice:
+    """One VDevice hosting one or more HEFs via HailoRT's built-in round-robin
+    scheduler. We deliberately do NOT call network_group.activate() — that is
+    the scheduler-OFF path and only permits one model active at a time.
+    VDevice.create_params() enables ROUND_ROBIN scheduling by default, which
+    multiplexes the detector and the re-ID net on the single Hailo-8L."""
+    def __init__(self, hefs):
+        self.vdev = VDevice(VDevice.create_params())
+        self.m = {}
+        for name, path in hefs.items():
+            hef = HEF(path)
+            cfg = ConfigureParams.create_from_hef(hef=hef, interface=HailoStreamInterface.PCIe)
+            ng = self.vdev.configure(hef, cfg)[0]
+            inp = InputVStreamParams.make(ng, format_type=FormatType.UINT8)
+            outp = OutputVStreamParams.make(ng, format_type=FormatType.FLOAT32)
+            pipe = InferVStreams(ng, inp, outp).__enter__()
+            self.m[name] = {"pipe": pipe,
+                            "in": hef.get_input_vstream_infos()[0].name,
+                            "out": hef.get_output_vstream_infos()[0].name}
+
+    def infer(self, name, batch):
+        mm = self.m[name]
+        return mm["pipe"].infer({mm["in"]: batch})[mm["out"]]
+
+
 class HailoPersonDetector:
-    def __init__(self):
-        self.hef = HEF(MODEL)
-        self.in_name = self.hef.get_input_vstream_infos()[0].name
-        self.out_name = self.hef.get_output_vstream_infos()[0].name
-        self.target = VDevice()
-        cfg = ConfigureParams.create_from_hef(hef=self.hef, interface=HailoStreamInterface.PCIe)
-        self.ng = self.target.configure(self.hef, cfg)[0]
-        self.ng_params = self.ng.create_params()
-        self.in_params = InputVStreamParams.make(self.ng, format_type=FormatType.UINT8)
-        self.out_params = OutputVStreamParams.make(self.ng, format_type=FormatType.FLOAT32)
-        self._act = self.ng.activate(self.ng_params)
-        self._act.__enter__()
-        self._pipe_ctx = InferVStreams(self.ng, self.in_params, self.out_params)
-        self._pipe = self._pipe_ctx.__enter__()
+    def __init__(self, dev):
+        self.dev = dev
 
     def detect(self, frame_bgr):
         h, w = frame_bgr.shape[:2]
         rgb = cv2.cvtColor(cv2.resize(frame_bgr, (640, 640)), cv2.COLOR_BGR2RGB)
         batch = np.ascontiguousarray(rgb[np.newaxis, ...], dtype=np.uint8)
-        out = self._pipe.infer({self.in_name: batch})[self.out_name]
+        out = self.dev.infer("det", batch)
         arr = np.asarray(out[0][PERSON_CLASS])
         boxes = []
         if arr.ndim == 2:
@@ -291,6 +308,22 @@ class HailoPersonDetector:
                 if score >= SCORE_TH:
                     boxes.append((int(xmin*w), int(ymin*h), int(xmax*w), int(ymax*h)))
         return boxes
+
+
+class HailoEmbedder:
+    """Person re-ID embedding on the NPU (OSNet 256x128 -> 512-d, L2-normalized)."""
+    def __init__(self, dev):
+        self.dev = dev
+
+    def embed(self, crop):
+        if crop is None or crop.size == 0 or crop.shape[0] < 8 or crop.shape[1] < 8:
+            return None
+        H, W = REID_INPUT
+        rgb = cv2.cvtColor(cv2.resize(crop, (W, H)), cv2.COLOR_BGR2RGB)
+        batch = np.ascontiguousarray(rgb[np.newaxis, ...], dtype=np.uint8)
+        v = np.asarray(self.dev.infer("reid", batch)).reshape(-1).astype(np.float32)
+        n = float(np.linalg.norm(v))
+        return v / n if n > 0 else None
 
 
 def door_line_for(w, h):
@@ -306,12 +339,26 @@ def door_line_for(w, h):
 
 
 def detect_loop():
-    det = HailoPersonDetector()
-    tracker = PeopleTracker()
+    hefs = {"det": MODEL}
+    reid_on = os.path.exists(REID_MODEL)
+    if reid_on:
+        hefs["reid"] = REID_MODEL
+    dev = HailoDevice(hefs)
+    det = HailoPersonDetector(dev)
+    if reid_on:
+        embed_fn = HailoEmbedder(dev).embed
+        reid_label = "OSNet · on-chip"
+        print(f"[reid] OSNet on-chip: {os.path.basename(REID_MODEL)}")
+    else:
+        embed_fn = hsv_embed
+        reid_label = "histogram · weak"
+        print(f"[reid] {REID_MODEL} not found — weak HSV-histogram fallback")
+    tracker = PeopleTracker(embed_fn)
     src = Source(SOURCE_URL)
     with LOCK:
         STATE["source"] = src.label
-    print(f"[hailo] model {os.path.basename(MODEL)} loaded. source = {src.label}")
+        STATE["reid"] = reid_label
+    print(f"[hailo] detector {os.path.basename(MODEL)} loaded. source = {src.label}")
     peak, t_prev, fail, last_sample = 0, time.time(), 0, 0.0
     recent = collections.deque(maxlen=8)
     line_set = False
@@ -422,7 +469,7 @@ footer{color:var(--mut);font-size:12px;margin-top:16px;text-align:center;line-he
     <div class=stat><div class=k>Left</div><div class=v id=left>–</div>
       <div class=s>crossed the door out</div></div>
     <div class=stat><div class=k>Unique · re-ID</div><div class=v id=unique>–</div>
-      <div class=s>experimental · needs OSNet model</div></div>
+      <div class=s id=reidnote>re-ID</div></div>
     <div class=stat><div class=k>Avg · 60s</div><div class=v id=avg>–</div>
       <div class=s>rolling average</div></div>
     <div class="stat eng"><div class=k>Engine</div><div class=v id=eng>–</div>
@@ -445,7 +492,7 @@ x.strokeStyle='#3ddc84';x.lineWidth=2;x.stroke();}
 async function tick(){try{const j=await(await fetch('/stats')).json();
 $('now').innerText=j.now;$('peak').innerText=j.peak;$('avg').innerText=j.avg60;
 $('entered').innerText=j.entered;$('left').innerText=j.left;$('unique').innerText=j.unique;
-$('eng').innerText=j.fps+' fps';$('modelf').innerText=j.model;
+$('eng').innerText=j.fps+' fps';$('modelf').innerText=j.model;$('reidnote').innerText=j.reid;
 $('srclabel').innerText=j.live?'live · '+j.source:'waiting for stream';$('src2').innerText=j.source;
 draw(j.history);}catch(e){$('srclabel').innerText='disconnected'}}
 setInterval(tick,500);tick();
@@ -464,8 +511,9 @@ class Handler(BaseHTTPRequestHandler):
                 body = json.dumps({
                     "now": STATE["now"], "peak": STATE["peak"], "avg60": STATE["avg60"],
                     "entered": STATE["entered"], "left": STATE["left"], "unique": STATE["unique"],
-                    "fps": STATE["fps"], "model": STATE["model"], "source": STATE["source"],
-                    "live": STATE["live"], "history": list(STATE["history"]),
+                    "reid": STATE["reid"], "fps": STATE["fps"], "model": STATE["model"],
+                    "source": STATE["source"], "live": STATE["live"],
+                    "history": list(STATE["history"]),
                 }).encode()
             self._send(200, "application/json", body)
         elif self.path == "/stream":

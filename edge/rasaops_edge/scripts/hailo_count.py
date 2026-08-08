@@ -279,28 +279,34 @@ class PeopleTracker:
 
 # ------------------- Hailo device: 1+ models via scheduler -------------------
 class HailoDevice:
-    """One VDevice hosting one or more HEFs via HailoRT's built-in round-robin
-    scheduler. We deliberately do NOT call network_group.activate() — that is
-    the scheduler-OFF path and only permits one model active at a time.
-    VDevice.create_params() enables ROUND_ROBIN scheduling by default, which
-    multiplexes the detector and the re-ID net on the single Hailo-8L."""
+    """One VDevice hosting one or more HEFs on the single Hailo-8L.
+
+    HailoRT 4.20 requires a network group to be ACTIVATED around inference, and
+    activation is EXCLUSIVE (one model at a time). So we activate just-in-time
+    per inference and open the vstream pipe inside that activation — the pattern
+    proven to work here (same as the standalone probe). Detector and re-ID net
+    take turns on the chip; re-ID runs only on new tracks, so the switching is
+    infrequent."""
     def __init__(self, hefs):
-        self.vdev = VDevice(VDevice.create_params())
+        self.vdev = VDevice()
         self.m = {}
         for name, path in hefs.items():
             hef = HEF(path)
             cfg = ConfigureParams.create_from_hef(hef=hef, interface=HailoStreamInterface.PCIe)
             ng = self.vdev.configure(hef, cfg)[0]
-            inp = InputVStreamParams.make(ng, format_type=FormatType.UINT8)
-            outp = OutputVStreamParams.make(ng, format_type=FormatType.FLOAT32)
-            pipe = InferVStreams(ng, inp, outp).__enter__()
-            self.m[name] = {"pipe": pipe,
-                            "in": hef.get_input_vstream_infos()[0].name,
-                            "out": hef.get_output_vstream_infos()[0].name}
+            self.m[name] = {
+                "ng": ng, "ngp": ng.create_params(),
+                "inp": InputVStreamParams.make(ng, format_type=FormatType.UINT8),
+                "outp": OutputVStreamParams.make(ng, format_type=FormatType.FLOAT32),
+                "in": hef.get_input_vstream_infos()[0].name,
+                "out": hef.get_output_vstream_infos()[0].name,
+            }
 
     def infer(self, name, batch):
         mm = self.m[name]
-        return mm["pipe"].infer({mm["in"]: batch})[mm["out"]]
+        with mm["ng"].activate(mm["ngp"]):
+            with InferVStreams(mm["ng"], mm["inp"], mm["outp"]) as pipe:
+                return pipe.infer({mm["in"]: batch})[mm["out"]]
 
 
 class HailoPersonDetector:

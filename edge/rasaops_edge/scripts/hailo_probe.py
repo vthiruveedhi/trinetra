@@ -56,16 +56,18 @@ def main():
     H0, W0 = frame.shape[:2]
     print(f"input frame: {W0}x{H0}")
 
-    # Preprocess: resize to 640x640, BGR->RGB, uint8, add batch dim
+    # Preprocess: resize to 640x640, BGR->RGB, uint8, add batch dim, force contiguous
     resized = cv2.resize(frame, (640, 640))
     rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-    batch = np.expand_dims(rgb, axis=0).astype(np.uint8)  # (1,640,640,3)
+    batch = np.ascontiguousarray(rgb[np.newaxis, ...], dtype=np.uint8)  # (1,640,640,3)
+    print(f"batch: shape={batch.shape} dtype={batch.dtype} nbytes={batch.nbytes} "
+          f"contiguous={batch.flags['C_CONTIGUOUS']}")
 
     hef = HEF(HEF_PATH)
     in_info = hef.get_input_vstream_infos()[0]
     out_info = hef.get_output_vstream_infos()[0]
     in_name, out_name = in_info.name, out_info.name
-    print(f"in_vstream:  {in_name}")
+    print(f"in_vstream:  {in_name}  (hef says shape {in_info.shape})")
     print(f"out_vstream: {out_name}")
 
     target = VDevice()
@@ -75,11 +77,41 @@ def main():
     in_params = InputVStreamParams.make(network_group, format_type=FormatType.UINT8)
     out_params = OutputVStreamParams.make(network_group, format_type=FormatType.FLOAT32)
 
+    # Use the exact input vstream name the configured network reports.
+    try:
+        cfg_in_infos = network_group.get_input_vstream_infos()
+        cfg_in_name = cfg_in_infos[0].name
+        print(f"configured input vstream name: {cfg_in_name}")
+    except Exception as e:
+        cfg_in_name = in_name
+        print(f"(could not read configured vstream name: {e}; using hef name)")
+
+    def try_infer(pipeline, key, arr, label):
+        try:
+            r = pipeline.infer({key: arr})
+            print(f"  infer OK via {label}")
+            return r
+        except Exception as e:
+            print(f"  infer FAILED via {label}: {type(e).__name__}: {str(e)[:120]}")
+            return None
+
     t0 = time.time()
+    results = None
     with InferVStreams(network_group, in_params, out_params) as pipeline:
         with network_group.activate(ng_params):
-            results = pipeline.infer({in_name: batch})
+            # Strategy 1: exact configured name, (1,640,640,3)
+            results = try_infer(pipeline, cfg_in_name, batch, "cfg_name + (1,H,W,C)")
+            # Strategy 2: hef name, (1,640,640,3)
+            if results is None and in_name != cfg_in_name:
+                results = try_infer(pipeline, in_name, batch, "hef_name + (1,H,W,C)")
+            # Strategy 3: no batch dim (H,W,C)
+            if results is None:
+                results = try_infer(pipeline, cfg_in_name,
+                                    np.ascontiguousarray(rgb, dtype=np.uint8),
+                                    "cfg_name + (H,W,C)")
     dt = (time.time() - t0) * 1000
+    if results is None:
+        print("ALL_INFER_STRATEGIES_FAILED"); sys.exit(1)
     print(f"inference: {dt:.0f} ms (includes activation)")
 
     out = results[out_name]

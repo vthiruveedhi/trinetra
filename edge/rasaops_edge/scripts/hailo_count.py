@@ -54,8 +54,20 @@ REID_TH = float(os.environ.get("REID_TH", "0.5"))       # cosine sim to call it 
 GALLERY_TTL = float(os.environ.get("GALLERY_TTL", "40"))  # sec a lost person is remembered
 DOOR_FLIP = os.environ.get("DOOR_FLIP", "0") not in ("0", "", "false", "no")
 
+# COCO class ids for tableware left behind (bottle, wine glass, cup, bowl)
+TABLEWARE = {39, 40, 41, 45}
+# Table zones + door line as FRACTIONS of the frame (resolution-independent),
+# traced from the JazBaz camera. Tune per camera. rect = (x1,y1,x2,y2).
+TABLE_ZONES = [
+    ("1", (0.01, 0.24, 0.13, 0.44)),
+    ("2", (0.13, 0.27, 0.31, 0.62)),
+    ("3", (0.30, 0.40, 0.60, 0.55)),
+    ("4", (0.42, 0.20, 0.61, 0.39)),
+]
+DOOR_LINE_FRAC = (0.52, 0.25, 0.77, 0.49)
+
 STATE = {"jpeg": None, "now": 0, "peak": 0, "avg60": 0.0, "fps": 0.0,
-         "entered": 0, "left": 0, "unique": 0, "reid": "",
+         "entered": 0, "left": 0, "unique": 0, "reid": "", "tables": [],
          "model": os.path.basename(MODEL), "source": "", "live": False,
          "history": collections.deque(maxlen=120)}
 LOCK = threading.Lock()
@@ -300,14 +312,20 @@ class HailoPersonDetector:
         rgb = cv2.cvtColor(cv2.resize(frame_bgr, (640, 640)), cv2.COLOR_BGR2RGB)
         batch = np.ascontiguousarray(rgb[np.newaxis, ...], dtype=np.uint8)
         out = self.dev.infer("det", batch)
-        arr = np.asarray(out[0][PERSON_CLASS])
-        boxes = []
-        if arr.ndim == 2:
+        persons, dishes = [], []
+        for cid in (PERSON_CLASS, *TABLEWARE):
+            if cid >= len(out[0]):
+                continue
+            arr = np.asarray(out[0][cid])
+            if arr.ndim != 2:
+                continue
             for row in arr:
                 ymin, xmin, ymax, xmax, score = row[:5]
-                if score >= SCORE_TH:
-                    boxes.append((int(xmin*w), int(ymin*h), int(xmax*w), int(ymax*h)))
-        return boxes
+                if score < SCORE_TH:
+                    continue
+                box = (int(xmin*w), int(ymin*h), int(xmax*w), int(ymax*h))
+                (persons if cid == PERSON_CLASS else dishes).append(box)
+        return persons, dishes
 
 
 class HailoEmbedder:
@@ -326,6 +344,24 @@ class HailoEmbedder:
         return v / n if n > 0 else None
 
 
+def _centroid_in(box, rect):
+    cx, cy = (box[0] + box[2]) // 2, (box[1] + box[3]) // 2
+    x1, y1, x2, y2 = rect
+    return x1 <= cx <= x2 and y1 <= cy <= y2
+
+
+def zone_status(persons, dishes, w, h):
+    """Per table: occupied (person) > dirty (dishes, no person) > free."""
+    result = []
+    for name, (fx1, fy1, fx2, fy2) in TABLE_ZONES:
+        rect = (int(fx1 * w), int(fy1 * h), int(fx2 * w), int(fy2 * h))
+        occ = any(_centroid_in(b, rect) for b in persons)
+        dsh = any(_centroid_in(b, rect) for b in dishes)
+        result.append({"name": name, "rect": rect,
+                       "status": "occupied" if occ else ("dirty" if dsh else "free")})
+    return result
+
+
 def door_line_for(w, h):
     env = os.environ.get("DOOR_LINE", "").strip()
     if env:
@@ -334,8 +370,8 @@ def door_line_for(w, h):
             return ((x1, y1), (x2, y2))
         except Exception:
             print(f"[door] bad DOOR_LINE={env!r}, using default")
-    # default guess: vertical-ish line ~62% across (tune per camera)
-    return ((int(0.62 * w), int(0.15 * h)), (int(0.66 * w), int(0.80 * h)))
+    fx1, fy1, fx2, fy2 = DOOR_LINE_FRAC
+    return ((int(fx1 * w), int(fy1 * h)), (int(fx2 * w), int(fy2 * h)))
 
 
 def detect_loop():
@@ -386,7 +422,9 @@ def detect_loop():
             line_set = True
 
         tnow = time.time()
-        active = tracker.update(det.detect(frame), frame, tnow)
+        persons, dishes = det.detect(frame)
+        active = tracker.update(persons, frame, tnow)
+        zstat = zone_status(persons, dishes, w, h)
         recent.append(len(active))
         now_count = int(round(statistics.median(recent)))
         peak = max(peak, now_count)
@@ -400,7 +438,17 @@ def detect_loop():
                 hist = list(STATE["history"])[-60:]
                 STATE["avg60"] = round(sum(hist) / max(1, len(hist)), 1)
 
-        # draw door line + labels
+        # draw table zones, colored by status
+        zc = {"occupied": (60, 220, 90), "dirty": (0, 170, 255), "free": (150, 150, 150)}
+        zl = {"occupied": "OCCUPIED", "dirty": "NEEDS BUSSING", "free": "FREE"}
+        for z in zstat:
+            zx1, zy1, zx2, zy2 = z["rect"]
+            c = zc[z["status"]]
+            cv2.rectangle(frame, (zx1, zy1), (zx2, zy2), c, 2)
+            cv2.putText(frame, f"T{z['name']}: {zl[z['status']]}", (zx1 + 4, zy1 + 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, c, 2)
+
+        # draw door line + label
         (lx1, ly1), (lx2, ly2) = tracker.line
         cv2.line(frame, (lx1, ly1), (lx2, ly2), (255, 200, 0), 2)
         cv2.putText(frame, "DOOR", (lx1 - 10, ly1 - 8), cv2.FONT_HERSHEY_SIMPLEX,
@@ -419,7 +467,8 @@ def detect_loop():
             with LOCK:
                 STATE.update(jpeg=buf.tobytes(), now=now_count, peak=peak,
                              fps=round(fps, 1), entered=tracker.entered,
-                             left=tracker.left, unique=tracker.unique, live=True)
+                             left=tracker.left, unique=tracker.unique, live=True,
+                             tables=[{"name": z["name"], "status": z["status"]} for z in zstat])
 
 
 # ----------------------------- web UI -----------------------------
@@ -475,6 +524,8 @@ footer{color:var(--mut);font-size:12px;margin-top:16px;text-align:center;line-he
     <div class="stat eng"><div class=k>Engine</div><div class=v id=eng>–</div>
       <div class=s>on-chip speed</div></div>
   </div>
+  <div class="card chartcard"><div class=k>Tables</div>
+    <div id=tables style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px">—</div></div>
   <div class="card chartcard"><div class=k>Occupancy — last 60s</div>
     <canvas id=spark width=1000 height=90></canvas></div>
 </div>
@@ -489,12 +540,20 @@ x.beginPath();x.moveTo(0,H);for(let i=0;i<n;i++)x.lineTo(i*dx,H-(h[i]/mx)*(H-8)-
 x.fillStyle='rgba(61,220,132,.15)';x.fill();
 x.beginPath();for(let i=0;i<n;i++){const y=H-(h[i]/mx)*(H-8)-2;i?x.lineTo(i*dx,y):x.moveTo(i*dx,y)}
 x.strokeStyle='#3ddc84';x.lineWidth=2;x.stroke();}
+const TZC={occupied:'#3ddc84',dirty:'#ffae42',free:'#7d8b9c'};
+const TZL={occupied:'occupied',dirty:'needs bussing',free:'free'};
+function tables(ts){const el=$('tables');if(!ts||!ts.length){el.textContent='—';return;}
+el.innerHTML='';ts.forEach(t=>{const d=document.createElement('div');
+d.style.cssText='padding:9px 13px;border-radius:10px;border:1px solid var(--line);min-width:118px';
+d.innerHTML='<div style="color:var(--mut);font-size:11px;letter-spacing:.5px">TABLE '+t.name+'</div>'+
+'<div style="font-weight:700;margin-top:3px;color:'+TZC[t.status]+'">'+TZL[t.status]+'</div>';
+el.appendChild(d);});}
 async function tick(){try{const j=await(await fetch('/stats')).json();
 $('now').innerText=j.now;$('peak').innerText=j.peak;$('avg').innerText=j.avg60;
 $('entered').innerText=j.entered;$('left').innerText=j.left;$('unique').innerText=j.unique;
 $('eng').innerText=j.fps+' fps';$('modelf').innerText=j.model;$('reidnote').innerText=j.reid;
 $('srclabel').innerText=j.live?'live · '+j.source:'waiting for stream';$('src2').innerText=j.source;
-draw(j.history);}catch(e){$('srclabel').innerText='disconnected'}}
+tables(j.tables);draw(j.history);}catch(e){$('srclabel').innerText='disconnected'}}
 setInterval(tick,500);tick();
 </script></body></html>""".encode("utf-8")
 
@@ -513,7 +572,7 @@ class Handler(BaseHTTPRequestHandler):
                     "entered": STATE["entered"], "left": STATE["left"], "unique": STATE["unique"],
                     "reid": STATE["reid"], "fps": STATE["fps"], "model": STATE["model"],
                     "source": STATE["source"], "live": STATE["live"],
-                    "history": list(STATE["history"]),
+                    "tables": STATE["tables"], "history": list(STATE["history"]),
                 }).encode()
             self._send(200, "application/json", body)
         elif self.path == "/stream":
